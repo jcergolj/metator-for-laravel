@@ -75,6 +75,33 @@ require_safe_inputs() {
     [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]] || die 'Invalid domain'
 }
 
+detect_server_ip() {
+    command -v curl >/dev/null 2>&1 || die 'curl is not installed'
+
+    echo
+    echo 'Detecting server public IP...'
+    SERVER_IP="$(curl -4 -s --max-time 5 ifconfig.me ||
+        curl -4 -s --max-time 5 icanhazip.com ||
+        curl -4 -s --max-time 5 ipinfo.io/ip)"
+    SERVER_IP="$(printf '%s' "$SERVER_IP" | tr -d '[:space:]')"
+    [[ -n "$SERVER_IP" ]] || die 'Could not detect server IP'
+    [[ "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+        die "Detected IP is not a valid IPv4 address: $SERVER_IP"
+    ok "Detected server public IP: $SERVER_IP"
+}
+
+prompt_cloudflare() {
+    USE_CLOUDFLARE=false
+    if ! ask_yes_no 'Configure the Cloudflare DNS A record for this domain?' n; then
+        return
+    fi
+
+    USE_CLOUDFLARE=true
+    prompt_secret 'Cloudflare API token' CF_TOKEN
+    prompt_value 'Cloudflare zone (for example, example.com)' CF_ZONE_NAME
+    [[ "$CF_ZONE_NAME" =~ ^[A-Za-z0-9.-]+$ ]] || die 'Invalid Cloudflare zone'
+}
+
 set_env_value() {
     local key="$1" value="$2" escaped
     escaped="${value//\\/\\\\}"
@@ -146,15 +173,23 @@ DEFAULT_APP_NAME="${GITHUB_REPOSITORY##*/}"
 prompt_value 'Application folder' APP_FOLDER "/var/www/${DEFAULT_APP_NAME}"
 prompt_value 'Domain' DOMAIN
 require_safe_inputs
+detect_server_ip
+prompt_cloudflare
 prompt_database
 
 APP_NAME="$(basename "$APP_FOLDER")"
 GITHUB_ALIAS='github-deployer'
 GITHUB_URL="git@${GITHUB_ALIAS}:${GITHUB_REPOSITORY}.git"
 CADDY_SITE="/etc/caddy/sites-enabled/${APP_NAME}.caddy"
-SUPERVISOR_FILE="/etc/supervisor/conf.d/${APP_NAME}-horizon.conf"
+SUPERVISOR_FILE="/etc/supervisor/conf.d/${APP_NAME}-worker.conf"
+USE_SCHEDULER=false
+USE_QUEUE=false
 USE_HORIZON=false
-ask_yes_no 'Does this application use Horizon?' n && USE_HORIZON=true
+ask_yes_no 'Does this application use the Laravel scheduler?' y && USE_SCHEDULER=true
+ask_yes_no 'Does this application run queued jobs on this server?' n && USE_QUEUE=true
+if [[ "$USE_QUEUE" == true ]]; then
+    ask_yes_no 'Should queued jobs be managed by Horizon?' n && USE_HORIZON=true
+fi
 
 echo
 echo 'Configuration summary'
@@ -162,13 +197,17 @@ echo "  GitHub repository: $GITHUB_REPOSITORY"
 echo "  Application folder: $APP_FOLDER"
 echo "  Application name:   $APP_NAME"
 echo "  Domain:             $DOMAIN"
+echo "  Server public IP:   $SERVER_IP"
 echo "  PHP-FPM socket:     $PHP_FPM_SOCKET"
+echo "  Cloudflare DNS:     $USE_CLOUDFLARE"
 echo "  Database:           $DATABASE_DRIVER"
 if [[ "$DATABASE_DRIVER" == mysql ]]; then
     echo "  MySQL host:         $MYSQL_HOST"
     echo "  MySQL database:     $MYSQL_DATABASE"
     echo "  MySQL username:     $MYSQL_USERNAME"
 fi
+echo "  Scheduler:          $USE_SCHEDULER"
+echo "  Queue workers:      $USE_QUEUE"
 echo "  Horizon:            $USE_HORIZON"
 echo
 read -r -p 'Press Enter to begin or q to quit: ' initial_answer
@@ -188,6 +227,62 @@ step_prerequisites() {
 run_step 'Verify server prerequisites' \
     'Checks the deployment user, required commands and PHP-FPM socket.' \
     step_prerequisites
+
+step_cloudflare_dns() {
+    if [[ "$USE_CLOUDFLARE" != true ]]; then
+        ok 'Cloudflare DNS was not selected; DNS was not changed'
+        return
+    fi
+
+    command -v curl >/dev/null 2>&1 || die 'curl is not installed'
+    command -v jq >/dev/null 2>&1 || die 'jq is required for Cloudflare DNS management'
+
+    local zones_json zone_id existing_json result_count response
+    zones_json="$(curl -fsS --max-time 10 \
+        "https://api.cloudflare.com/client/v4/zones?name=${CF_ZONE_NAME}&status=active&per_page=1" \
+        -H "Authorization: Bearer ${CF_TOKEN}" \
+        -H 'Content-Type: application/json')" || die 'Cloudflare zone lookup failed'
+
+    echo "$zones_json" | jq -e '.success == true' >/dev/null ||
+        die 'Cloudflare rejected the API token or zone lookup'
+    zone_id="$(echo "$zones_json" | jq -r '.result[0].id // empty')"
+    [[ -n "$zone_id" ]] || die "Cloudflare zone was not found: $CF_ZONE_NAME"
+
+    existing_json="$(curl -fsS --max-time 10 \
+        "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records?type=A&name=${DOMAIN}&per_page=1" \
+        -H "Authorization: Bearer ${CF_TOKEN}" \
+        -H 'Content-Type: application/json')" || die 'Cloudflare DNS lookup failed'
+
+    echo "$existing_json" | jq -e '.success == true' >/dev/null ||
+        die 'Cloudflare rejected the DNS lookup'
+    result_count="$(echo "$existing_json" | jq '.result | length')"
+    if [[ "$result_count" -gt 0 ]]; then
+        ok "DNS A record for ${DOMAIN} already exists; skipping"
+        return
+    fi
+
+    step 'Creating Cloudflare DNS A record...'
+    response="$(curl -fsS --max-time 10 -X POST \
+        "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records" \
+        -H "Authorization: Bearer ${CF_TOKEN}" \
+        -H 'Content-Type: application/json' \
+        --data "{\"type\":\"A\",\"name\":\"${DOMAIN}\",\"content\":\"${SERVER_IP}\",\"proxied\":true}")" || {
+        warn 'Cloudflare DNS record creation failed'
+        ask_yes_no 'Continue without creating the DNS record?' n || exit 1
+        return
+    }
+
+    if echo "$response" | jq -e '.success == true' >/dev/null; then
+        ok 'Cloudflare DNS record created'
+    else
+        warn 'Cloudflare did not create the DNS record'
+        ask_yes_no 'Continue without creating the DNS record?' n || exit 1
+    fi
+}
+
+run_step 'Configure Cloudflare DNS' \
+    'Checks for the selected domain A record and creates it only when missing.' \
+    step_cloudflare_dns
 
 step_github_key() {
     sudo install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "/home/${DEPLOY_USER}/.ssh"
@@ -323,26 +418,44 @@ step_scheduler() {
     ok 'Exactly one scheduler entry is configured'
 }
 
-run_step 'Configure Laravel scheduler' 'Adds one scheduler entry using the current release symlink.' step_scheduler
+if [[ "$USE_SCHEDULER" == true ]]; then
+    run_step 'Configure Laravel scheduler' 'Adds one scheduler entry using the current release symlink.' step_scheduler
+else
+    ok 'Laravel scheduler was not selected; cron was not changed'
+fi
 
-step_horizon() {
-    if [[ "$USE_HORIZON" != true ]]; then
-        ok 'Horizon was not selected; nothing to do'
+step_workers() {
+    if [[ "$USE_QUEUE" != true ]]; then
+        ok 'Queue workers were not selected; Supervisor was not changed'
         return
     fi
     command -v supervisorctl >/dev/null 2>&1 || sudo apt-get install -y supervisor
-    command -v redis-server >/dev/null 2>&1 || sudo apt-get install -y redis-server
+    if [[ "$USE_HORIZON" == true ]]; then
+        command -v redis-server >/dev/null 2>&1 || sudo apt-get install -y redis-server
+    fi
+
+    local worker_command log_file
+    if [[ "$USE_HORIZON" == true ]]; then
+        worker_command="php ${APP_FOLDER}/current/artisan horizon"
+        log_file="${APP_FOLDER}/shared/storage/logs/horizon.log"
+    else
+        worker_command="php ${APP_FOLDER}/current/artisan queue:work --sleep=3 --tries=3 --timeout=90 --max-time=3600"
+        log_file="${APP_FOLDER}/shared/storage/logs/queue-worker.log"
+    fi
+
     local temporary
     temporary="$(mktemp)"
     cat > "$temporary" <<EOF
-[program:${APP_NAME}-horizon]
+[program:${APP_NAME}-worker]
 process_name=%(program_name)s
-command=php ${APP_FOLDER}/current/artisan horizon
+command=${worker_command}
+autostart=true
+autorestart=true
 stopasgroup=true
 killasgroup=true
 user=www-data
 redirect_stderr=true
-stdout_logfile=${APP_FOLDER}/shared/storage/logs/horizon.log
+stdout_logfile=${log_file}
 stopwaitsecs=3600
 EOF
     sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER/shared/storage/logs"
@@ -352,10 +465,60 @@ EOF
         sudo supervisorctl reread
         sudo supervisorctl update
     fi
-    ok 'Horizon Supervisor configuration is ready'
+    if [[ "$USE_HORIZON" == true ]]; then
+        ok 'Horizon Supervisor configuration is ready'
+    else
+        ok 'Queue worker Supervisor configuration is ready'
+    fi
 }
 
-run_step 'Configure Horizon' 'Creates a Supervisor program only when Horizon was selected.' step_horizon
+run_step 'Configure queue workers' \
+    'Creates a Supervisor program for Horizon or queue:work when selected.' \
+    step_workers
+
+step_deployer_instructions() {
+    echo
+    echo 'Required deployer.php changes:'
+    echo "  Set the production hostname to: $SERVER_IP"
+    if [[ "$USE_SCHEDULER" == true ]]; then
+        echo '  Scheduler: no deployer.php hook is required; the server cron uses current.'
+    else
+        echo '  Scheduler: leave the scheduler cron hook out.'
+    fi
+    if [[ "$USE_QUEUE" == true ]]; then
+        echo
+        echo "  Add this after deploy:symlink to restart workers after each release:"
+        echo "    after('deploy:symlink', 'artisan:queue:restart');"
+        if [[ "$USE_HORIZON" == true ]]; then
+            echo '  Horizon: add this task and hook:'
+            echo "    task('deploy:horizon', function () {"
+            echo "        run('cd {{release_path}} && {{bin/php}} artisan horizon:terminate');"
+            echo '    });'
+            echo "    after('deploy:symlink', 'deploy:horizon');"
+        fi
+    fi
+    if [[ "$USE_QUEUE" != true ]]; then
+        echo '  Queue jobs: no queue worker or Horizon hooks are required.'
+    fi
+    echo "  Keep this failure hook: after('deploy:failed', 'deploy:unlock');"
+
+    echo
+    echo 'How to deploy from your local project:'
+    echo '  1. Copy this repository deployer.php into the root of your Laravel project.'
+    echo "  2. Set repository to: ${GITHUB_URL}"
+    echo "  3. Set hostname to: ${SERVER_IP}"
+    echo "  4. Set remoteUser to: ${DEPLOY_USER}"
+    echo "  5. Set deployPath to: ${APP_FOLDER}"
+    echo '  6. Require Deployer in your Laravel project if it is not installed:'
+    echo '       composer require --dev deployer/deployer'
+    echo '  7. Test SSH access from your local machine:'
+    echo "       ssh ${DEPLOY_USER}@${SERVER_IP}"
+    echo '  8. Run the first deployment from your Laravel project root:'
+    echo '       vendor/bin/dep deploy production'
+    echo '  9. For later releases, run the same deploy command again.'
+}
+
+step_deployer_instructions
 
 echo
 ok 'Server setup finished'
