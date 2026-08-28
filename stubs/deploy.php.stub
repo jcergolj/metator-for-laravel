@@ -1,0 +1,60 @@
+<?php
+
+namespace Deployer;
+
+require 'recipe/laravel.php';
+
+set('application', '__APP_NAME__');
+
+set(
+    'repository',
+    '__GITHUB_REPOSITORY__'
+);
+
+set('branch', 'master');
+set('keep_releases', 5);
+
+host('production')
+    ->setHostname('YOUR_SERVER_IP')
+    ->setRemoteUser('deployer')
+    ->setDeployPath('__DEPLOY_PATH__');
+
+/*
+ * Server services are configured by scripts/setup.sh:
+ * - scheduler cron: php artisan schedule:run every minute
+ * - Supervisor: either queue:work or Horizon
+ */
+
+add('shared_files', [
+    'database/database.sqlite',
+]);
+
+desc('Build frontend assets');
+task('deploy:assets', function () {
+    run('cd {{release_path}} && {{bin/php}} artisan tailwindcss:download --force');
+    run('cd {{release_path}} && {{bin/php}} artisan tailwindcss:build');
+    run('cd {{release_path}} && {{bin/php}} artisan importmap:optimize');
+});
+
+task('deploy:cache', function () {
+    run('cd {{release_path}} && {{bin/php}} artisan optimize');
+});
+
+// If this app uses Horizon, keep Supervisor on the server running Horizon
+// and uncomment this task and hook.
+// task('deploy:horizon', function () {
+//     run('cd {{release_path}} && {{bin/php}} artisan horizon:terminate');
+// });
+
+after('deploy:vendors', 'deploy:assets');
+after('artisan:migrate', 'deploy:cache');
+
+// If this app uses queue workers without Horizon, configure Supervisor on the
+// server for queue:work and uncomment this hook.
+// after('deploy:symlink', 'artisan:queue:restart');
+
+// If this app uses Horizon, configure Supervisor on the server for Horizon and
+// uncomment this hook instead.
+// after('deploy:symlink', 'deploy:horizon');
+
+after('deploy:failed', 'deploy:unlock');
