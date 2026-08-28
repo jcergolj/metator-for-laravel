@@ -1,6 +1,8 @@
 # Metator For Laravel
 
-Installs Deployer scaffolding into an existing Laravel app.
+An opinionated deployment setup for Laravel using Deployer, Caddy, Cloudflare, and optional Horizon with Redis.
+
+`php artisan metator:install` is a wrapper around the usual Deployer setup. It adds `deploy.php` and the extra `scripts/` helpers for server setup.
 
 ## Install
 
@@ -9,12 +11,33 @@ composer require --dev jcergolj/metator-for-laravel
 php artisan metator:install
 ```
 
+Installing this package also installs `deployer/deployer`.
+
 ## What it adds
 
+- Deployer as a dependency
 - `deploy.php`
 - `scripts/setup.sh`
 - `scripts/lib/*`
 - `scripts/steps/*`
+
+## What the scripts do
+
+`./scripts/setup.sh` is an interactive server setup script. It can:
+
+- create the `deployer` user if it does not exist
+- add your public SSH key to `authorized_keys` for `deployer` login
+- create a GitHub deploy key for the server and configure the SSH alias
+- optionally create a Cloudflare DNS A record for the domain
+- create the shared Laravel `.env`
+- configure SQLite or MySQL connection values
+- create the shared SQLite database file when SQLite is used
+- configure shared file permissions
+- configure Caddy for the Laravel app
+- add the Laravel scheduler cron job
+- configure Supervisor for `queue:work` or Horizon
+- install Redis when Horizon is selected
+- print the next deployment steps for `deploy.php`
 
 ## Notes
 
