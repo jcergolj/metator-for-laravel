@@ -16,6 +16,13 @@ die() { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 ok() { echo -e "${GREEN}[OK]${NC} $*"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 
+ensure_deploy_user_exists() {
+    if ! id "$DEPLOY_USER" >/dev/null 2>&1; then
+        sudo useradd --create-home --shell /bin/bash "$DEPLOY_USER"
+        ok "Created deployment user: $DEPLOY_USER"
+    fi
+}
+
 prompt_value() {
     local prompt="$1" variable="$2" default="${3:-}" value
     if [[ -n "$default" ]]; then

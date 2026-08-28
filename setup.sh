@@ -31,10 +31,16 @@ SUPERVISOR_FILE="/etc/supervisor/conf.d/${APP_NAME}-worker.conf"
 USE_SCHEDULER=false
 USE_QUEUE=false
 USE_HORIZON=false
+CONFIGURE_DEPLOY_USER_LOGIN=false
+CLIENT_PUBLIC_KEY=''
 ask_yes_no 'Does this application use the Laravel scheduler?' y && USE_SCHEDULER=true
 ask_yes_no 'Does this application run queued jobs on this server?' n && USE_QUEUE=true
 if [[ "$USE_QUEUE" == true ]]; then
     ask_yes_no 'Should queued jobs be managed by Horizon?' n && USE_HORIZON=true
+fi
+if ask_yes_no 'Configure SSH login for the deployer user from your computer?' y; then
+    CONFIGURE_DEPLOY_USER_LOGIN=true
+    prompt_value 'Paste your public SSH key' CLIENT_PUBLIC_KEY
 fi
 
 echo
@@ -55,20 +61,25 @@ fi
 echo "  Scheduler:          $USE_SCHEDULER"
 echo "  Queue workers:      $USE_QUEUE"
 echo "  Horizon:            $USE_HORIZON"
+echo "  SSH login key:      $CONFIGURE_DEPLOY_USER_LOGIN"
 echo
 read -r -p 'Press Enter to begin or q to quit: ' initial_answer
 [[ "$initial_answer" != q && "$initial_answer" != Q ]] || exit 0
 
 run_step 'Verify server prerequisites' \
-    'Checks the deployment user, required commands and PHP-FPM socket.' \
+    'Checks required commands, creates the deployment user when missing, and verifies the PHP-FPM socket.' \
     step_prerequisites
+
+run_step 'Configure deployer SSH login' \
+    'Creates the deployer user when missing, installs your public key into authorized_keys, and fixes SSH permissions.' \
+    step_deployer_login
 
 run_step 'Configure Cloudflare DNS' \
     'Checks for the selected domain A record and creates it only when missing.' \
     step_cloudflare_dns
 
 run_step 'Configure reusable GitHub SSH access' \
-    'Configures the deployer GitHub SSH key and verifies repository access.' \
+    'Creates the deployer SSH key when missing, configures the GitHub alias, and verifies repository access.' \
     step_github_key
 
 run_step 'Create the shared Laravel environment file' \
