@@ -20,7 +20,7 @@ host('production')
     ->setDeployPath('__DEPLOY_PATH__');
 
 /*
- * Server services are configured by scripts/setup.sh:
+ * Server services are configured by scripts/server-bootstrap.sh:
  * - scheduler cron: php artisan schedule:run every minute
  * - Supervisor: either queue:work or Horizon
  */

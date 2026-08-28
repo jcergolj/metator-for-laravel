@@ -17,13 +17,13 @@ Installing this package also installs `deployer/deployer`.
 
 - Deployer as a dependency
 - `deploy.php`
-- `scripts/setup.sh`
+- `scripts/server-bootstrap.sh`
 - `scripts/lib/*`
 - `scripts/steps/*`
 
 ## What the scripts do
 
-`./scripts/setup.sh` is an interactive server setup script. It can:
+`./scripts/server-bootstrap.sh` is an interactive server setup script. It can:
 
 - create the `deployer` user if it does not exist
 - add your public SSH key to `authorized_keys` for `deployer` login
@@ -43,4 +43,14 @@ Installing this package also installs `deployer/deployer`.
 
 - Use `php artisan metator:install --force` to overwrite existing files.
 - Review `deploy.php` after install.
-- Run `./scripts/setup.sh` on the server.
+
+## Fresh Server Bootstrap
+
+For a fresh server, copy the generated `scripts/` directory first:
+
+```bash
+scp -r scripts user@SERVER_IP:/tmp/
+ssh user@SERVER_IP
+cd /tmp/scripts
+bash server-bootstrap.sh
+```

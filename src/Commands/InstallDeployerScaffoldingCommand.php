@@ -23,7 +23,7 @@ class InstallDeployerScaffoldingCommand extends Command
         $basePath = $this->laravel->basePath();
         $targets = [
             'deploy.php.stub' => $basePath.'/deploy.php',
-            'scripts/setup.sh' => $basePath.'/scripts/setup.sh',
+            'scripts/server-bootstrap.sh' => $basePath.'/scripts/server-bootstrap.sh',
             'scripts/lib/common.sh' => $basePath.'/scripts/lib/common.sh',
             'scripts/steps/01-prerequisites.sh' => $basePath.'/scripts/steps/01-prerequisites.sh',
             'scripts/steps/02-deployer-login.sh' => $basePath.'/scripts/steps/02-deployer-login.sh',
@@ -45,7 +45,7 @@ class InstallDeployerScaffoldingCommand extends Command
         $this->info('Metator scaffolding installed.');
         $this->line('Next steps:');
         $this->line('  1. Review deploy.php');
-        $this->line('  2. Run ./scripts/setup.sh on the server');
+        $this->line('  2. Copy ./scripts to the server and run ./scripts/server-bootstrap.sh');
 
         return self::SUCCESS;
     }
