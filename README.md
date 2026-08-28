@@ -54,3 +54,13 @@ ssh user@SERVER_IP
 cd /tmp/scripts
 bash server-bootstrap.sh
 ```
+
+## Deploy
+
+After bootstrap, deploy the app with Deployer:
+
+```bash
+vendor/bin/dep deploy production
+```
+
+Deployer: https://deployer.org/
