@@ -40,8 +40,15 @@ stdout_logfile=${log_file}
 stopwaitsecs=3600
 EOF
     sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER/shared/storage/logs"
+    if [[ -f "$SUPERVISOR_FILE" ]]; then
+        warn "Updating existing Supervisor config at $SUPERVISOR_FILE"
+    else
+        warn "Creating Supervisor config at $SUPERVISOR_FILE"
+    fi
     sudo install -m 644 -o root -g root "$temporary" "$SUPERVISOR_FILE"
     rm -f "$temporary"
+    warn "Review $SUPERVISOR_FILE before continuing."
+    read -r -p 'Press Enter to confirm the Supervisor config review and continue: '
     if [[ -e "$APP_FOLDER/current/artisan" ]]; then
         sudo supervisorctl reread
         sudo supervisorctl update

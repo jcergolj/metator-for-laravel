@@ -29,7 +29,7 @@ Installing this package also installs `deployer/deployer`.
 - add your public SSH key to `authorized_keys` for `deployer` login
 - create a GitHub deploy key for the server and configure the SSH alias
 - optionally create a Cloudflare DNS A record for the domain using a Cloudflare zone ID
-- create the shared Laravel `.env`
+- create the shared Laravel `.env` and wait for review confirmation before continuing
 - configure SQLite or MySQL connection values
 - create the shared SQLite database file when SQLite is used
 - configure shared file permissions
@@ -40,6 +40,12 @@ Installing this package also installs `deployer/deployer`.
 - install Redis when Horizon is selected
 - use the latest detected PHP-FPM version when installing PHP database extensions
 - print the next deployment steps for `deploy.php`
+
+Typical generated or updated files during bootstrap:
+
+- shared Laravel environment: `/var/www/<app-name>/shared/.env`
+- Caddy site config: `/etc/caddy/sites-enabled/<app-name>.caddy`
+- Supervisor worker config: `/etc/supervisor/conf.d/<app-name>-worker.conf`
 
 ## Notes
 

@@ -41,6 +41,9 @@ echo "  Domain:             $DOMAIN"
 echo "  Server public IP:   $SERVER_IP"
 echo "  PHP version:        $PHP_VERSION"
 echo "  PHP-FPM socket:     $PHP_FPM_SOCKET"
+echo "  Shared .env file:   $APP_FOLDER/shared/.env"
+echo "  Caddy site file:    $CADDY_SITE"
+echo "  Supervisor file:    $SUPERVISOR_FILE"
 echo '  Cloudflare DNS:     decide in step'
 echo '  Database:           choose in step'
 echo '  Scheduler:          decide in step'
@@ -67,7 +70,7 @@ run_step 'Configure reusable GitHub SSH access' \
     step_github_key
 
 run_step 'Create the shared Laravel environment file' \
-    'Creates the persistent .env, opens it for editing, then writes the selected database settings.' \
+    'Creates the persistent .env, writes the selected database settings, then waits for your review confirmation.' \
     step_app_folder
 
 run_step 'Prepare the selected database' \
@@ -79,7 +82,7 @@ run_step 'Verify shared-file permissions' \
     step_permissions
 
 run_step 'Configure Caddy' \
-    'Creates and validates the Caddy site configuration.' \
+    "Creates and validates the Caddy site configuration at ${CADDY_SITE}, then waits for your review confirmation." \
     step_caddy
 
 run_step 'Configure Laravel scheduler' \
@@ -87,7 +90,7 @@ run_step 'Configure Laravel scheduler' \
     step_scheduler
 
 run_step 'Configure queue workers' \
-    'Creates a Supervisor program for Horizon or queue:work when selected.' \
+    "Creates the Supervisor program at ${SUPERVISOR_FILE} for Horizon or queue:work when selected, then waits for your review confirmation." \
     step_workers
 
 step_deployer_instructions

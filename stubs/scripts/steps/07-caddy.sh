@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
 step_caddy() {
+    if [[ -f "$CADDY_SITE" ]]; then
+        warn "Updating existing Caddy site file at $CADDY_SITE"
+    else
+        warn "Creating Caddy site file at $CADDY_SITE"
+    fi
     if [[ ! -f "$CADDY_CERT" ]]; then
         die "Missing certificate: $CADDY_CERT"
         return 1
@@ -37,6 +42,8 @@ EOF
         die 'Caddy validation failed; the previous site configuration was restored'
         return 1
     fi
+    warn "Review $CADDY_SITE before continuing."
+    read -r -p 'Press Enter to confirm the Caddy config review and continue: '
     sudo systemctl reload caddy
     ok 'Caddy configuration is valid and active'
 }
