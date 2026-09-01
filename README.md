@@ -33,7 +33,8 @@ Installing this package also installs `deployer/deployer`.
 - configure SQLite or MySQL connection values
 - create the shared SQLite database file when SQLite is used
 - configure shared file permissions
-- configure Caddy for the Laravel app
+- add `import /etc/caddy/sites-enabled/*.caddy` to `/etc/caddy/Caddyfile` when missing
+- create and validate the Laravel app Caddy site file in `/etc/caddy/sites-enabled/`
 - add the Laravel scheduler cron job
 - configure Supervisor for `queue:work` or Horizon
 - install Redis when Horizon is selected
@@ -45,6 +46,7 @@ Installing this package also installs `deployer/deployer`.
 - Use `php artisan metator:install --force` to overwrite existing files.
 - Review `deploy.php` after install.
 - Ensure the latest detected `phpX.Y-fpm` service is installed and running before bootstrap, because the script uses that version for the FPM socket and PHP database extensions.
+- Ensure Caddy is installed before bootstrap, because the script updates `/etc/caddy/Caddyfile`, validates the config, and reloads the service.
 
 ## Fresh Server Bootstrap
 

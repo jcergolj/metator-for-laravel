@@ -40,6 +40,11 @@ task('deploy:cache', function () {
     run('cd {{release_path}} && {{bin/php}} artisan optimize');
 });
 
+task('deploy:php-fpm', function () {
+    run('sudo systemctl reload {{php_fpm_service}}');
+});
+
+
 // If this app uses Horizon, keep Supervisor on the server running Horizon
 // and uncomment this task and hook.
 // task('deploy:horizon', function () {
@@ -56,5 +61,7 @@ after('artisan:migrate', 'deploy:cache');
 // If this app uses Horizon, configure Supervisor on the server for Horizon and
 // uncomment this hook instead.
 // after('deploy:symlink', 'deploy:horizon');
+
+after('deploy:symlink', 'deploy:php-fpm');
 
 after('deploy:failed', 'deploy:unlock');
