@@ -2,12 +2,19 @@
 
 step_deployer_login() {
     if [[ "$CONFIGURE_DEPLOY_USER_LOGIN" != true ]]; then
-        ok 'Deployer SSH login was not selected; authorized_keys was not changed'
-        return
+        if ! ask_yes_no 'Configure SSH login for the deployer user from your computer?' y; then
+            ok 'Deployer SSH login was not selected; authorized_keys was not changed'
+            return
+        fi
+
+        CONFIGURE_DEPLOY_USER_LOGIN=true
+        prompt_value 'Paste your public SSH key' CLIENT_PUBLIC_KEY || return 1
     fi
 
-    [[ "$CLIENT_PUBLIC_KEY" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521)[[:space:]]+ ]] ||
+    if [[ ! "$CLIENT_PUBLIC_KEY" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521)[[:space:]]+ ]]; then
         die 'Public SSH key must start with ssh-ed25519, ssh-rsa, or ecdsa-sha2-*'
+        return 1
+    fi
 
     ensure_deploy_user_exists
 

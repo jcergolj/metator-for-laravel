@@ -30,7 +30,9 @@ EOF
     rm -f "$temporary"
     sudo chown -R "$DEPLOY_USER:$DEPLOY_USER" "/home/${DEPLOY_USER}/.ssh"
 
-    sudo -u "$DEPLOY_USER" git ls-remote "$GITHUB_URL" HEAD >/dev/null ||
+    if ! sudo -u "$DEPLOY_USER" git ls-remote "$GITHUB_URL" HEAD >/dev/null; then
         die 'GitHub access failed'
+        return 1
+    fi
     ok "Reusable GitHub key can read $GITHUB_REPOSITORY"
 }

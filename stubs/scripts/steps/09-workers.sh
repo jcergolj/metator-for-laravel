@@ -2,8 +2,13 @@
 
 step_workers() {
     if [[ "$USE_QUEUE" != true ]]; then
-        ok 'Queue workers were not selected; Supervisor was not changed'
-        return
+        if ! ask_yes_no 'Does this application run queued jobs on this server?' n; then
+            ok 'Queue workers were not selected; Supervisor was not changed'
+            return
+        fi
+
+        USE_QUEUE=true
+        ask_yes_no 'Should queued jobs be managed by Horizon?' n && USE_HORIZON=true
     fi
     command -v supervisorctl >/dev/null 2>&1 || sudo apt-get install -y supervisor
     if [[ "$USE_HORIZON" == true ]]; then

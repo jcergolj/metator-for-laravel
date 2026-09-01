@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 
 step_caddy() {
-    [[ -f "$CADDY_CERT" ]] || die "Missing certificate: $CADDY_CERT"
-    [[ -f "$CADDY_KEY" ]] || die "Missing private key: $CADDY_KEY"
+    if [[ ! -f "$CADDY_CERT" ]]; then
+        die "Missing certificate: $CADDY_CERT"
+        return 1
+    fi
+    if [[ ! -f "$CADDY_KEY" ]]; then
+        die "Missing private key: $CADDY_KEY"
+        return 1
+    fi
     sudo install -d -m 755 -o root -g root /etc/caddy/sites-enabled
     if ! sudo grep -Fq 'import /etc/caddy/sites-enabled/*.caddy' /etc/caddy/Caddyfile; then
         printf '\nimport /etc/caddy/sites-enabled/*.caddy\n' |
@@ -29,6 +35,7 @@ EOF
     if ! sudo caddy validate --config /etc/caddy/Caddyfile; then
         [[ -n "$backup" ]] && sudo cp -a "$backup" "$CADDY_SITE" || sudo rm -f "$CADDY_SITE"
         die 'Caddy validation failed; the previous site configuration was restored'
+        return 1
     fi
     sudo systemctl reload caddy
     ok 'Caddy configuration is valid and active'

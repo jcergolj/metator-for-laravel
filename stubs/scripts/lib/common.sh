@@ -11,10 +11,23 @@ CADDY_CERT="/etc/caddy/certs/cloudflare-wildcard.crt"
 CADDY_KEY="/etc/caddy/certs/cloudflare-wildcard.key"
 
 step_number=0
+STEP_SUCCESSFUL=()
+STEP_FAILED=()
+STEP_SKIPPED=()
 
-die() { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
+die() { echo -e "${RED}[ERROR]${NC} $*" >&2; return 1; }
 ok() { echo -e "${GREEN}[OK]${NC} $*"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
+
+USE_CLOUDFLARE=false
+CLOUDFLARE_CONFIG_READY=false
+DATABASE_DRIVER=''
+DATABASE_CONFIG_READY=false
+USE_SCHEDULER=false
+USE_QUEUE=false
+USE_HORIZON=false
+CONFIGURE_DEPLOY_USER_LOGIN=false
+CLIENT_PUBLIC_KEY=''
 
 ensure_deploy_user_exists() {
     if ! id "$DEPLOY_USER" >/dev/null 2>&1; then
@@ -31,7 +44,10 @@ prompt_value() {
     else
         read -r -p "$prompt: " value
     fi
-    [[ -n "$value" ]] || die "$prompt is required"
+    if [[ -z "$value" ]]; then
+        die "$prompt is required"
+        return 1
+    fi
     printf -v "$variable" '%s' "$value"
 }
 
@@ -39,7 +55,10 @@ prompt_secret() {
     local prompt="$1" variable="$2" value
     read -r -s -p "$prompt: " value
     echo
-    [[ -n "$value" ]] || die "$prompt is required"
+    if [[ -z "$value" ]]; then
+        die "$prompt is required"
+        return 1
+    fi
     printf -v "$variable" '%s' "$value"
 }
 
@@ -65,12 +84,52 @@ run_step() {
     while true; do
         read -r -p '[c] Continue  [s] Skip  [q] Quit: ' answer
         case "$answer" in
-            c|C|'') "$function_name"; return ;;
-            s|S) warn "Skipped: $title"; return ;;
+            c|C|'')
+                set +e
+                "$function_name"
+                local status=$?
+                set -e
+                if [[ "$status" -eq 0 ]]; then
+                    STEP_SUCCESSFUL+=("STEP ${step_number} - ${title}")
+                    return
+                fi
+                STEP_FAILED+=("STEP ${step_number} - ${title}")
+                warn "Step failed: $title"
+                return
+                ;;
+            s|S)
+                STEP_SKIPPED+=("STEP ${step_number} - ${title}")
+                warn "Skipped: $title"
+                return
+                ;;
             q|Q) echo 'Stopped.'; exit 0 ;;
             *) echo 'Please enter c, s, or q.' ;;
         esac
     done
+}
+
+print_step_group() {
+    local heading="$1"
+    shift
+
+    echo "$heading"
+    if [[ "$#" -eq 0 ]]; then
+        echo '  none'
+        return
+    fi
+
+    local item
+    for item in "$@"; do
+        echo "  - $item"
+    done
+}
+
+print_step_summary() {
+    echo
+    echo 'Step summary'
+    print_step_group 'Performed successfully:' "${STEP_SUCCESSFUL[@]}"
+    print_step_group 'Failed:' "${STEP_FAILED[@]}"
+    print_step_group 'Skipped:' "${STEP_SKIPPED[@]}"
 }
 
 require_safe_inputs() {
@@ -96,16 +155,23 @@ detect_server_ip() {
     ok "Detected server public IP: $SERVER_IP"
 }
 
-prompt_cloudflare() {
-    USE_CLOUDFLARE=false
-    if ! ask_yes_no 'Configure the Cloudflare DNS A record for this domain?' n; then
+ensure_cloudflare_config() {
+    if [[ "$CLOUDFLARE_CONFIG_READY" == true ]]; then
         return
     fi
 
-    USE_CLOUDFLARE=true
-    prompt_secret 'Cloudflare API token' CF_TOKEN
-    prompt_value 'Cloudflare zone (for example, example.com)' CF_ZONE_NAME
-    [[ "$CF_ZONE_NAME" =~ ^[A-Za-z0-9.-]+$ ]] || die 'Invalid Cloudflare zone'
+    USE_CLOUDFLARE=false
+    if ask_yes_no 'Configure the Cloudflare DNS A record for this domain?' n; then
+        USE_CLOUDFLARE=true
+        prompt_secret 'Cloudflare API token' CF_TOKEN || return 1
+        prompt_value 'Cloudflare zone ID' CF_ZONE_ID || return 1
+        if [[ ! "$CF_ZONE_ID" =~ ^[A-Za-z0-9]+$ ]]; then
+            die 'Invalid Cloudflare zone ID'
+            return 1
+        fi
+    fi
+
+    CLOUDFLARE_CONFIG_READY=true
 }
 
 set_env_value() {
@@ -142,7 +208,11 @@ configure_database_env() {
     set_env_value DB_PASSWORD "$MYSQL_PASSWORD"
 }
 
-prompt_database() {
+ensure_database_config() {
+    if [[ "$DATABASE_CONFIG_READY" == true ]]; then
+        return
+    fi
+
     local choice
     echo
     echo 'Database driver:'
@@ -157,14 +227,17 @@ prompt_database() {
             ;;
         2)
             DATABASE_DRIVER='mysql'
-            prompt_value 'MySQL host' MYSQL_HOST '127.0.0.1'
-            prompt_value 'MySQL port' MYSQL_PORT '3306'
-            prompt_value 'MySQL database' MYSQL_DATABASE
-            prompt_value 'MySQL username' MYSQL_USERNAME
-            prompt_secret 'MySQL password' MYSQL_PASSWORD
+            prompt_value 'MySQL host' MYSQL_HOST '127.0.0.1' || return 1
+            prompt_value 'MySQL port' MYSQL_PORT '3306' || return 1
+            prompt_value 'MySQL database' MYSQL_DATABASE || return 1
+            prompt_value 'MySQL username' MYSQL_USERNAME || return 1
+            prompt_secret 'MySQL password' MYSQL_PASSWORD || return 1
             ;;
         *)
             die 'Invalid database selection'
+            return 1
             ;;
     esac
+
+    DATABASE_CONFIG_READY=true
 }
