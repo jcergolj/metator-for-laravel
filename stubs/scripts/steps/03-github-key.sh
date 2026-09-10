@@ -4,8 +4,8 @@ step_github_key() {
     sudo install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "/home/${DEPLOY_USER}/.ssh"
     if [[ ! -f "$GITHUB_KEY" ]]; then
         sudo -u "$DEPLOY_USER" ssh-keygen -t ed25519 -f "$GITHUB_KEY" \
-            -C 'shared production deployer key' -N ''
-        warn 'Add this key to GitHub before continuing:'
+            -C "${APP_NAME} production deployer key" -N ''
+        warn "Add this app-specific key to the ${GITHUB_REPOSITORY} GitHub repository before continuing:"
         sudo -u "$DEPLOY_USER" cat "${GITHUB_KEY}.pub"
         read -r -p 'Press Enter after adding the key to GitHub: '
     fi
@@ -14,17 +14,17 @@ step_github_key() {
     local temporary
     temporary="$(mktemp)"
     if [[ -f "$ssh_config" ]]; then
-        sudo sed '/^# BEGIN LARAVEL DEPLOYER GITHUB$/,/^# END LARAVEL DEPLOYER GITHUB$/d' \
+        sudo sed "/^# BEGIN ${GITHUB_CONFIG_MARKER}$/,/^# END ${GITHUB_CONFIG_MARKER}$/d" \
             "$ssh_config" > "$temporary"
     fi
     cat >> "$temporary" <<EOF
-# BEGIN LARAVEL DEPLOYER GITHUB
+# BEGIN ${GITHUB_CONFIG_MARKER}
 Host ${GITHUB_ALIAS}
     HostName github.com
     User git
     IdentityFile ${GITHUB_KEY}
     IdentitiesOnly yes
-# END LARAVEL DEPLOYER GITHUB
+# END ${GITHUB_CONFIG_MARKER}
 EOF
     sudo install -m 600 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$temporary" "$ssh_config"
     rm -f "$temporary"
@@ -34,5 +34,5 @@ EOF
         die 'GitHub access failed'
         return 1
     fi
-    ok "Reusable GitHub key can read $GITHUB_REPOSITORY"
+    ok "App-specific GitHub key can read $GITHUB_REPOSITORY"
 }

@@ -82,12 +82,14 @@ class InstallDeployerScaffoldingCommand extends Command
             [
                 '__APP_NAME__',
                 '__DEPLOY_PATH__',
+                '__GITHUB_ALIAS__',
                 '__GITHUB_REPOSITORY__',
             ],
             [
                 $project,
                 '/var/www/'.$project,
-                'git@github-deployer:jcergolj/'.$project.'.git',
+                'github-deployer-'.$project,
+                'jcergolj/'.$project,
             ],
             $contents,
         );

@@ -27,8 +27,7 @@ require_safe_inputs
 detect_server_ip
 
 APP_NAME="$(basename "$APP_FOLDER")"
-GITHUB_ALIAS='github-deployer'
-GITHUB_URL="git@${GITHUB_ALIAS}:${GITHUB_REPOSITORY}.git"
+configure_github_identity
 CADDY_SITE="/etc/caddy/sites-enabled/${APP_NAME}.caddy"
 SUPERVISOR_FILE="/etc/supervisor/conf.d/${APP_NAME}-worker.conf"
 
@@ -66,7 +65,7 @@ run_step 'Configure Cloudflare DNS' \
     step_cloudflare_dns
 
 run_step 'Configure reusable GitHub SSH access' \
-    'Creates the deployer SSH key when missing, configures the GitHub alias, and verifies repository access.' \
+    'Creates an app-specific deployer SSH key when missing, configures its GitHub alias, and verifies repository access.' \
     step_github_key
 
 run_step 'Create the shared Laravel environment file' \

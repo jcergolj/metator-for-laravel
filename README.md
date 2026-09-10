@@ -27,7 +27,7 @@ Installing this package also installs `deployer/deployer`.
 
 - create the `deployer` user if it does not exist
 - add your public SSH key to `authorized_keys` for `deployer` login
-- create a GitHub deploy key for the server and configure the SSH alias
+- create an app-specific GitHub deploy key for the server and configure its SSH alias
 - optionally create a Cloudflare DNS A record for the domain using a Cloudflare zone ID
 - create the shared Laravel `.env` and wait for review confirmation before continuing
 - configure SQLite or MySQL connection values
@@ -46,11 +46,15 @@ Typical generated or updated files during bootstrap:
 - shared Laravel environment: `/var/www/<app-name>/shared/.env`
 - Caddy site config: `/etc/caddy/sites-enabled/<app-name>.caddy`
 - Supervisor worker config: `/etc/supervisor/conf.d/<app-name>-worker.conf`
+- GitHub private key: `/home/deployer/.ssh/deployer-github-<app-name>`
+- GitHub SSH alias: `github-deployer-<app-name>`
 
 ## Notes
 
 - Use `php artisan metator:install --force` to overwrite existing files.
 - Review `deploy.php` after install.
+- Add the newly generated public key to that repository's GitHub deploy keys. Deploy keys cannot be reused across repositories.
+- Existing keys from older versions are not overwritten; bootstrap creates the new app-specific key alongside them.
 - Ensure the latest detected `phpX.Y-fpm` service is installed and running before bootstrap, because the script uses that version for the FPM socket and PHP database extensions.
 - Ensure Caddy is installed before bootstrap, because the script updates `/etc/caddy/Caddyfile`, validates the config, and reloads the service.
 

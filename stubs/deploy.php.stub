@@ -9,7 +9,7 @@ set('application', '__APP_NAME__');
 
 set(
     'repository',
-    '__GITHUB_REPOSITORY__'
+    'git@__GITHUB_ALIAS__:__GITHUB_REPOSITORY__.git'
 );
 
 set('branch', 'master');
