@@ -9,14 +9,14 @@ set('application', '__APP_NAME__');
 
 set(
     'repository',
-    'git@__GITHUB_ALIAS__:__GITHUB_REPOSITORY__.git'
+    'git@__GIT_DEPLOYER_NAME__:__GITHUB_REPOSITORY__.git'
 );
 
 set('branch', 'master');
 set('keep_releases', 5);
 
 host('production')
-    ->setHostname('YOUR_SERVER_IP')
+    ->setHostname('__SERVER_IP__')
     ->setRemoteUser('deployer')
     ->setDeployPath('__DEPLOY_PATH__');
 

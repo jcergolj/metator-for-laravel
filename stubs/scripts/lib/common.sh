@@ -7,7 +7,7 @@ NC='\033[0m'
 
 DEPLOY_USER="deployer"
 GITHUB_KEY=''
-GITHUB_ALIAS=''
+GITHUB_ALIAS='__GIT_DEPLOYER_NAME__'
 GITHUB_URL=''
 GITHUB_CONFIG_MARKER=''
 CADDY_CERT="/etc/caddy/certs/cloudflare-wildcard.crt"
@@ -33,8 +33,7 @@ CONFIGURE_DEPLOY_USER_LOGIN=false
 CLIENT_PUBLIC_KEY=''
 
 configure_github_identity() {
-    GITHUB_KEY="/home/${DEPLOY_USER}/.ssh/deployer-github-${APP_NAME}"
-    GITHUB_ALIAS="github-deployer-${APP_NAME}"
+    GITHUB_KEY="/home/${DEPLOY_USER}/.ssh/${GITHUB_ALIAS}"
     GITHUB_URL="git@${GITHUB_ALIAS}:${GITHUB_REPOSITORY}.git"
     GITHUB_CONFIG_MARKER="LARAVEL DEPLOYER GITHUB ${APP_NAME}"
 }

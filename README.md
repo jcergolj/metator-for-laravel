@@ -11,6 +11,10 @@ composer require --dev jcergolj/metator-for-laravel
 php artisan metator:install
 ```
 
+The install command asks for the production server IP address and a Git SSH
+deployer name. The name is used for both the GitHub SSH alias and the private
+key filename.
+
 Installing this package also installs `deployer/deployer`.
 
 ## What it adds
@@ -46,8 +50,8 @@ Typical generated or updated files during bootstrap:
 - shared Laravel environment: `/var/www/<app-name>/shared/.env`
 - Caddy site config: `/etc/caddy/sites-enabled/<app-name>.caddy`
 - Supervisor worker config: `/etc/supervisor/conf.d/<app-name>-worker.conf`
-- GitHub private key: `/home/deployer/.ssh/deployer-github-<app-name>`
-- GitHub SSH alias: `github-deployer-<app-name>`
+- GitHub private key: `/home/deployer/.ssh/<git-ssh-deployer-name>`
+- GitHub SSH alias: `<git-ssh-deployer-name>`
 
 ## Notes
 
