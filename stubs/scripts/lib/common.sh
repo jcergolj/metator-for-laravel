@@ -47,6 +47,23 @@ ensure_deploy_user_exists() {
     fi
 }
 
+claim_application_folder() {
+    local identity_file="$APP_FOLDER/.metator-repository"
+    if sudo test -L "$APP_FOLDER"; then
+        die "Application folder must not be a symlink: $APP_FOLDER"
+        return 1
+    fi
+    if sudo test -e "$identity_file"; then
+        if ! sudo grep -qxF "$GITHUB_REPOSITORY" "$identity_file"; then
+            die "Application folder belongs to another repository: $APP_FOLDER"
+            return 1
+        fi
+        return
+    fi
+    sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER" || return 1
+    printf '%s\n' "$GITHUB_REPOSITORY" | sudo tee "$identity_file" >/dev/null || return 1
+}
+
 prompt_value() {
     local prompt="$1" variable="$2" default="${3:-}" value
     if [[ -n "$default" ]]; then
@@ -125,10 +142,17 @@ print_step_summary() {
 
 require_safe_inputs() {
     [[ "$GITHUB_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] ||
-        die 'GitHub repository must look like owner/repository'
-    [[ "$APP_FOLDER" =~ ^/var/www/[A-Za-z0-9_.-]+$ ]] ||
-        die 'Application folder must be a simple path under /var/www'
-    [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]] || die 'Invalid domain'
+        { die 'GitHub repository must look like owner/repository'; return 1; }
+    [[ "$APP_FOLDER" =~ ^/var/www/[A-Za-z0-9_.-]+$ && "$APP_FOLDER" != /var/www/. && "$APP_FOLDER" != /var/www/.. ]] ||
+        { die 'Application folder must be a simple path under /var/www'; return 1; }
+    [[ "$GITHUB_ALIAS" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+        { die 'Invalid Git SSH deployer name'; return 1; }
+    case "${GITHUB_ALIAS,,}" in
+        config|authorized_keys*|known_hosts*|environment|rc|*.pub)
+            die 'Git SSH deployer name collides with a reserved SSH filename'
+            return 1 ;;
+    esac
+    [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]] || { die 'Invalid domain'; return 1; }
     [[ "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
         die 'Invalid server IPv4 address'
 }

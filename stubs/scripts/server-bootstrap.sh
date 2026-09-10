@@ -3,6 +3,17 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# All applications modify the same SSH config, crontab, and Caddyfile.
+# Keep the lock for the complete bootstrap, including interactive reviews.
+if [[ "$EUID" -ne 0 ]]; then
+    exec sudo bash "$SCRIPT_DIR/server-bootstrap.sh" "$@"
+fi
+exec 9>/var/lock/metator-bootstrap.lock
+if ! flock -n 9; then
+    printf 'Another application bootstrap is running on this server. Try again when it finishes.\n' >&2
+    exit 1
+fi
+
 source "$SCRIPT_DIR/lib/common.sh"
 
 GITHUB_REPOSITORY='__GITHUB_REPOSITORY__'
@@ -61,6 +72,12 @@ run_step 'Verify server prerequisites' \
     'Checks required commands, creates the deployment user when missing, and verifies the PHP-FPM socket.' \
     step_prerequisites
 
+if [[ "${#STEP_FAILED[@]}" -gt 0 ]]; then
+    print_step_summary
+    exit 1
+fi
+claim_application_folder || exit 1
+
 if [[ "$CONFIGURE_DEPLOY_USER_LOGIN" == true ]]; then
     run_step 'Configure deployer SSH login' \
         'Creates the deployer user when missing, installs your public key into authorized_keys, and fixes SSH permissions.' \
@@ -80,6 +97,11 @@ fi
 run_step 'Configure reusable GitHub SSH access' \
     'Creates an app-specific deployer SSH key when missing, configures its GitHub alias, and verifies repository access.' \
     step_github_key
+
+if [[ "${STEP_FAILED[*]}" == *'Configure reusable GitHub SSH access'* ]]; then
+    print_step_summary
+    exit 1
+fi
 
 run_step 'Create the shared Laravel environment file' \
     'Creates the persistent .env, writes the selected database settings, then waits for your review confirmation.' \

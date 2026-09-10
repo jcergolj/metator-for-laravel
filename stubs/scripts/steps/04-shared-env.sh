@@ -2,10 +2,11 @@
 
 step_app_folder() {
     local env_file="$APP_FOLDER/shared/.env"
+    ENV_FILE_CREATED=false
 
     sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER"
     sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER/shared"
-    if [[ ! -f "$env_file" ]]; then
+    if ! sudo test -e "$env_file"; then
         warn "Creating shared environment file at $env_file"
         sudo install -m 640 -o "$DEPLOY_USER" -g www-data /dev/null "$env_file"
         ENV_FILE_CREATED=true
@@ -17,6 +18,12 @@ step_app_folder() {
         return 1
     fi
     merge_env_example "$ENV_EXAMPLE_FILE" "$env_file"
+    if [[ "$ENV_FILE_CREATED" == true ]]; then
+        # Laravel defaults can share prefixes when every app is named Laravel.
+        set_env_value REDIS_PREFIX "metator_${APP_NAME}_"
+        set_env_value CACHE_PREFIX "metator_${APP_NAME}_"
+        set_env_value HORIZON_PREFIX "metator_${APP_NAME}_"
+    fi
     if ! sudo grep -qE '^APP_URL=' "$env_file"; then
         set_env_value APP_URL "https://${DOMAIN}"
     fi

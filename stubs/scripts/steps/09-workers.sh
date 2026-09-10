@@ -35,7 +35,7 @@ EOF
     sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER/shared/storage/logs"
     if ! sudo cmp -s "$temporary" "$SUPERVISOR_FILE"; then
         changed=true
-        if [[ -f "$SUPERVISOR_FILE" ]]; then
+        if sudo test -f "$SUPERVISOR_FILE"; then
             warn "Updating existing Supervisor config at $SUPERVISOR_FILE"
         else
             warn "Creating Supervisor config at $SUPERVISOR_FILE"
@@ -49,7 +49,7 @@ EOF
     fi
     if [[ -e "$APP_FOLDER/current/artisan" ]]; then
         sudo supervisorctl reread
-        sudo supervisorctl update
+        sudo supervisorctl update "${APP_NAME}-worker"
     fi
     if [[ "$USE_HORIZON" == true ]]; then
         ok 'Horizon Supervisor configuration is ready'

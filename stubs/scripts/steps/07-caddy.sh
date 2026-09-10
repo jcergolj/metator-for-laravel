@@ -1,19 +1,24 @@
 #!/usr/bin/env bash
 
 step_caddy() {
-    if [[ ! -f "$CADDY_CERT" ]]; then
+    if ! sudo test -f "$CADDY_CERT"; then
         die "Missing certificate: $CADDY_CERT"
         return 1
     fi
-    if [[ ! -f "$CADDY_KEY" ]]; then
+    if ! sudo test -f "$CADDY_KEY"; then
         die "Missing private key: $CADDY_KEY"
         return 1
     fi
     sudo install -d -m 755 -o root -g root /etc/caddy/sites-enabled
-    local caddyfile_changed=false
-    if ! sudo grep -Fq 'import /etc/caddy/sites-enabled/*.caddy' /etc/caddy/Caddyfile; then
+    local caddyfile_changed=false caddyfile_backup='' caddyfile_existed=false
+    if ! sudo grep -qxE '[[:space:]]*import /etc/caddy/sites-enabled/\*\.caddy[[:space:]]*' /etc/caddy/Caddyfile; then
+        caddyfile_backup="$(mktemp)" || return 1
+        if sudo test -e /etc/caddy/Caddyfile; then
+            caddyfile_existed=true
+            sudo cp -p /etc/caddy/Caddyfile "$caddyfile_backup" || { rm -f "$caddyfile_backup"; return 1; }
+        fi
         printf '\nimport /etc/caddy/sites-enabled/*.caddy\n' |
-            sudo tee -a /etc/caddy/Caddyfile >/dev/null
+            sudo tee -a /etc/caddy/Caddyfile >/dev/null || { rm -f "$caddyfile_backup"; return 1; }
         caddyfile_changed=true
     fi
 
@@ -50,9 +55,18 @@ EOF
     rm -f "$temporary"
     if ! sudo caddy validate --config /etc/caddy/Caddyfile; then
         [[ -n "$backup" ]] && sudo cp -a "$backup" "$CADDY_SITE" || sudo rm -f "$CADDY_SITE"
-        die 'Caddy validation failed; the previous site configuration was restored'
+        if [[ "$caddyfile_changed" == true ]]; then
+            if [[ "$caddyfile_existed" == true ]]; then
+                sudo cp -p "$caddyfile_backup" /etc/caddy/Caddyfile
+            else
+                sudo rm -f /etc/caddy/Caddyfile
+            fi
+            rm -f "$caddyfile_backup"
+        fi
+        die 'Caddy validation failed; the previous site and shared configurations were restored'
         return 1
     fi
+    [[ -z "$caddyfile_backup" ]] || rm -f "$caddyfile_backup"
     warn "Review $CADDY_SITE before continuing."
     read -r -p 'Press Enter to confirm the Caddy config review and continue: '
     sudo systemctl reload caddy

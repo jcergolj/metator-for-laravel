@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 step_deployer_instructions() {
+    local init_directory="/var/init-scripts/${GITHUB_REPOSITORY}"
     echo
     echo 'Required deployer.php changes:'
     echo "  Set the production hostname to: $SERVER_IP"
@@ -38,9 +39,11 @@ step_deployer_instructions() {
     echo "  4. Set remoteUser to: ${DEPLOY_USER}"
     echo "  5. Set deployPath to: ${APP_FOLDER}"
     echo '  6. Copy ./scripts to the server for first-time bootstrap:'
-    echo "       scp -r scripts your-user@${SERVER_IP}:/tmp/"
+    echo "       ssh -t your-user@${SERVER_IP} 'sudo install -d -m 755 -o \"\$(id -un)\" -g \"\$(id -gn)\" ${init_directory}'"
+    echo "       scp -r scripts/. your-user@${SERVER_IP}:${init_directory}/"
     echo '  7. Run the bootstrap script on the server:'
-    echo '       cd /tmp/scripts && bash server-bootstrap.sh'
+    echo "       ssh your-user@${SERVER_IP}"
+    echo "       cd ${init_directory} && bash server-bootstrap.sh"
     echo '  8. Test SSH access from your local machine:'
     echo "       ssh ${DEPLOY_USER}@${SERVER_IP}"
     echo '  9. Run the first deployment from your Laravel project root:'

@@ -77,7 +77,28 @@ Each application has its own GitHub key and SSH alias. The key is created only
 when it does not already exist, and the public key must be added to that
 repository's GitHub deploy keys. Applications on the same server use the
 shared `/home/deployer/.ssh/config`, with one `Host` block per application
-alias; do not replace that file when adding another site.
+alias; do not replace that file when adding another site. Choose a unique Git SSH
+deployer name for every application on the server. Bootstrap rejects aliases
+already used by another SSH block and reserved SSH filenames such as `config`,
+`authorized_keys`, and `known_hosts`.
+
+Bootstrap runs through `sudo` and takes a server-wide lock; finish one bootstrap
+before starting another. It preserves unrelated SSH blocks and cron entries,
+and applies Supervisor updates only to the selected application's worker.
+If Caddy validation fails, both the site config and shared Caddyfile are restored.
+
+Each application folder records its repository in `.metator-repository`.
+Later bootstraps reject a different repository using that same folder. Existing
+folders without this marker are registered on their first run of the updated
+bootstrap, so verify the folder belongs to the selected repository first.
+Prerequisite, folder-ownership, and GitHub-access failures stop setup before
+the environment, database, and service configuration steps.
+
+New shared environments get app-specific `REDIS_PREFIX`, `CACHE_PREFIX`, and
+`HORIZON_PREFIX` values. Existing environments retain their values; check these
+prefixes are distinct when applications share Redis, and ensure the application's
+Laravel configuration uses these variables. MySQL database/user selection and
+the installed Cloudflare wildcard certificate remain server configuration choices.
 
 Typical generated or updated files during bootstrap:
 
@@ -99,17 +120,24 @@ Typical generated or updated files during bootstrap:
 
 ## Fresh Server Bootstrap
 
-For a fresh server, copy the generated `scripts/` directory first:
+Store bootstrap scripts under `/var/init-scripts/<owner>/<repo>`. Create the
+directory if missing, give the SSH login user ownership, then copy the contents
+of the generated `scripts/` directory (including `.env.example`):
 
 ```bash
-scp -r scripts user@SERVER_IP:/tmp/
+ssh -t user@SERVER_IP 'sudo install -d -m 755 -o "$(id -un)" -g "$(id -gn)" /var/init-scripts/OWNER/REPO'
+scp -r scripts/. user@SERVER_IP:/var/init-scripts/OWNER/REPO/
 ssh user@SERVER_IP
-cd /tmp/scripts
+cd /var/init-scripts/OWNER/REPO
 bash server-bootstrap.sh
 ```
 
-For an existing server, copy the generated `scripts/` directory to a temporary
-location and run the bootstrap there as well. The script uses the embedded
+Replace `OWNER/REPO` with the GitHub repository, for example `acme/billing`.
+Including the owner avoids collisions between repositories with the same name.
+The bootstrap entry point is `/var/init-scripts/OWNER/REPO/server-bootstrap.sh`.
+
+For an existing server, use the same commands to update that repository's
+scripts and run the bootstrap there. The script uses the embedded
 application settings, so use the scripts generated for the application being
 configured.
 
