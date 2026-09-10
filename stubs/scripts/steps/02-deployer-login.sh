@@ -2,25 +2,25 @@
 
 step_deployer_login() {
     if [[ "$CONFIGURE_DEPLOY_USER_LOGIN" != true ]]; then
-        if ! ask_yes_no 'Configure SSH login for the deployer user from your computer?' y; then
-            ok 'Deployer SSH login was not selected; authorized_keys was not changed'
-            return
-        fi
-
-        CONFIGURE_DEPLOY_USER_LOGIN=true
-        prompt_value 'Paste your public SSH key' CLIENT_PUBLIC_KEY || return 1
+        return
     fi
+
+    ensure_deploy_user_exists
+    local ssh_dir="/home/${DEPLOY_USER}/.ssh"
+    local authorized_keys="${ssh_dir}/authorized_keys"
+    if sudo test -f "$authorized_keys" &&
+        sudo grep -qE '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp)' "$authorized_keys"; then
+        ok "SSH login key is already configured for $DEPLOY_USER"
+
+        return
+    fi
+
+    prompt_value 'Paste your public SSH key' CLIENT_PUBLIC_KEY || return 1
 
     if [[ ! "$CLIENT_PUBLIC_KEY" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521)[[:space:]]+ ]]; then
         die 'Public SSH key must start with ssh-ed25519, ssh-rsa, or ecdsa-sha2-*'
         return 1
     fi
-
-    ensure_deploy_user_exists
-
-    local ssh_dir authorized_keys
-    ssh_dir="/home/${DEPLOY_USER}/.ssh"
-    authorized_keys="${ssh_dir}/authorized_keys"
 
     sudo install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$ssh_dir"
     if ! sudo test -f "$authorized_keys"; then

@@ -2,20 +2,14 @@
 
 step_workers() {
     if [[ "$USE_QUEUE" != true ]]; then
-        if ! ask_yes_no 'Does this application run queued jobs on this server?' n; then
-            ok 'Queue workers were not selected; Supervisor was not changed'
-            return
-        fi
-
-        USE_QUEUE=true
-        ask_yes_no 'Should queued jobs be managed by Horizon?' n && USE_HORIZON=true
+        return
     fi
     command -v supervisorctl >/dev/null 2>&1 || sudo apt-get install -y supervisor
     if [[ "$USE_HORIZON" == true ]]; then
         command -v redis-server >/dev/null 2>&1 || sudo apt-get install -y redis-server
     fi
 
-    local worker_command log_file
+    local worker_command log_file temporary changed=false
     if [[ "$USE_HORIZON" == true ]]; then
         worker_command="php ${APP_FOLDER}/current/artisan horizon"
         log_file="${APP_FOLDER}/shared/storage/logs/horizon.log"
@@ -24,7 +18,6 @@ step_workers() {
         log_file="${APP_FOLDER}/shared/storage/logs/queue-worker.log"
     fi
 
-    local temporary
     temporary="$(mktemp)"
     cat > "$temporary" <<EOF
 [program:${APP_NAME}-worker]
@@ -40,15 +33,20 @@ stdout_logfile=${log_file}
 stopwaitsecs=3600
 EOF
     sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER/shared/storage/logs"
-    if [[ -f "$SUPERVISOR_FILE" ]]; then
-        warn "Updating existing Supervisor config at $SUPERVISOR_FILE"
-    else
-        warn "Creating Supervisor config at $SUPERVISOR_FILE"
+    if ! sudo cmp -s "$temporary" "$SUPERVISOR_FILE"; then
+        changed=true
+        if [[ -f "$SUPERVISOR_FILE" ]]; then
+            warn "Updating existing Supervisor config at $SUPERVISOR_FILE"
+        else
+            warn "Creating Supervisor config at $SUPERVISOR_FILE"
+        fi
+        sudo install -m 644 -o root -g root "$temporary" "$SUPERVISOR_FILE"
     fi
-    sudo install -m 644 -o root -g root "$temporary" "$SUPERVISOR_FILE"
     rm -f "$temporary"
-    warn "Review $SUPERVISOR_FILE before continuing."
-    read -r -p 'Press Enter to confirm the Supervisor config review and continue: '
+    if [[ "$changed" == true ]]; then
+        warn "Review $SUPERVISOR_FILE before continuing."
+        read -r -p 'Press Enter to confirm the Supervisor config review and continue: '
+    fi
     if [[ -e "$APP_FOLDER/current/artisan" ]]; then
         sudo supervisorctl reread
         sudo supervisorctl update

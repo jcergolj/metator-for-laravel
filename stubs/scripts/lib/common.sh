@@ -31,6 +31,8 @@ USE_QUEUE=false
 USE_HORIZON=false
 CONFIGURE_DEPLOY_USER_LOGIN=false
 CLIENT_PUBLIC_KEY=''
+ENV_FILE_CREATED=false
+ENV_UPDATED=false
 
 configure_github_identity() {
     GITHUB_KEY="/home/${DEPLOY_USER}/.ssh/${GITHUB_ALIAS}"
@@ -71,50 +73,30 @@ prompt_secret() {
     printf -v "$variable" '%s' "$value"
 }
 
-ask_yes_no() {
-    local prompt="$1" default="${2:-n}" answer suffix
-    if [[ "$default" =~ ^[Yy]$ ]]; then
-        suffix='Y/n'
-    else
-        suffix='y/N'
-    fi
-    read -r -p "$prompt [$suffix]: " answer
-    answer="${answer:-$default}"
-    [[ "$answer" =~ ^[Yy]$ ]]
+skip_step() {
+    local title="$1"
+    step_number=$((step_number + 1))
+    STEP_SKIPPED+=("STEP ${step_number} - ${title}")
+    warn "Skipped: $title"
 }
 
 run_step() {
-    local title="$1" description="$2" function_name="$3" answer
+    local title="$1" description="$2" function_name="$3" status
     step_number=$((step_number + 1))
     echo
     echo -e "${GREEN}STEP ${step_number} — ${title}${NC}"
     echo "$description"
     echo
-    while true; do
-        read -r -p '[c] Continue  [s] Skip  [q] Quit: ' answer
-        case "$answer" in
-            c|C|'')
-                set +e
-                "$function_name"
-                local status=$?
-                set -e
-                if [[ "$status" -eq 0 ]]; then
-                    STEP_SUCCESSFUL+=("STEP ${step_number} - ${title}")
-                    return
-                fi
-                STEP_FAILED+=("STEP ${step_number} - ${title}")
-                warn "Step failed: $title"
-                return
-                ;;
-            s|S)
-                STEP_SKIPPED+=("STEP ${step_number} - ${title}")
-                warn "Skipped: $title"
-                return
-                ;;
-            q|Q) echo 'Stopped.'; exit 0 ;;
-            *) echo 'Please enter c, s, or q.' ;;
-        esac
-    done
+    set +e
+    "$function_name"
+    status=$?
+    set -e
+    if [[ "$status" -eq 0 ]]; then
+        STEP_SUCCESSFUL+=("STEP ${step_number} - ${title}")
+        return
+    fi
+    STEP_FAILED+=("STEP ${step_number} - ${title}")
+    warn "Step failed: $title"
 }
 
 print_step_group() {
@@ -147,21 +129,8 @@ require_safe_inputs() {
     [[ "$APP_FOLDER" =~ ^/var/www/[A-Za-z0-9_.-]+$ ]] ||
         die 'Application folder must be a simple path under /var/www'
     [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]] || die 'Invalid domain'
-}
-
-detect_server_ip() {
-    command -v curl >/dev/null 2>&1 || die 'curl is not installed'
-
-    echo
-    echo 'Detecting server public IP...'
-    SERVER_IP="$(curl -4 -s --max-time 5 ifconfig.me ||
-        curl -4 -s --max-time 5 icanhazip.com ||
-        curl -4 -s --max-time 5 ipinfo.io/ip)"
-    SERVER_IP="$(printf '%s' "$SERVER_IP" | tr -d '[:space:]')"
-    [[ -n "$SERVER_IP" ]] || die 'Could not detect server IP'
     [[ "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
-        die "Detected IP is not a valid IPv4 address: $SERVER_IP"
-    ok "Detected server public IP: $SERVER_IP"
+        die 'Invalid server IPv4 address'
 }
 
 ensure_cloudflare_config() {
@@ -169,33 +138,67 @@ ensure_cloudflare_config() {
         return
     fi
 
-    USE_CLOUDFLARE=false
-    if ask_yes_no 'Configure the Cloudflare DNS A record for this domain?' n; then
-        USE_CLOUDFLARE=true
-        prompt_secret 'Cloudflare API token' CF_TOKEN || return 1
-        prompt_value 'Cloudflare zone ID' CF_ZONE_ID || return 1
-        if [[ ! "$CF_ZONE_ID" =~ ^[A-Za-z0-9]+$ ]]; then
-            die 'Invalid Cloudflare zone ID'
-            return 1
-        fi
+    if [[ "$USE_CLOUDFLARE" != true ]]; then
+        CLOUDFLARE_CONFIG_READY=true
+
+        return
+    fi
+
+    [[ -n "${CF_TOKEN:-}" ]] || prompt_secret 'Cloudflare API token' CF_TOKEN || return 1
+    [[ -n "${CF_ZONE_ID:-}" ]] || prompt_value 'Cloudflare zone ID' CF_ZONE_ID || return 1
+    if [[ ! "$CF_ZONE_ID" =~ ^[A-Za-z0-9]+$ ]]; then
+        die 'Invalid Cloudflare zone ID'
+        return 1
     fi
 
     CLOUDFLARE_CONFIG_READY=true
 }
 
 set_env_value() {
-    local key="$1" value="$2" escaped
+    local key="$1" value="$2" escaped desired
     escaped="${value//\\/\\\\}"
     escaped="${escaped//&/\\&}"
     escaped="${escaped//|/\\|}"
     escaped="${escaped//\"/\\\"}"
+    desired="${key}=\"${escaped}\""
 
+    if sudo grep -qxF "$desired" "$APP_FOLDER/shared/.env"; then
+        return
+    fi
     if sudo grep -qE "^${key}=" "$APP_FOLDER/shared/.env"; then
         sudo sed -i "s|^${key}=.*|${key}=\"${escaped}\"|" "$APP_FOLDER/shared/.env"
     else
-        printf '%s\n' "${key}=\"${escaped}\"" |
+        printf '%s\n' "$desired" |
             sudo tee -a "$APP_FOLDER/shared/.env" >/dev/null
     fi
+    ENV_UPDATED=true
+}
+
+merge_env_example() {
+    local example_file="$1" env_file="$2" line key
+    ENV_UPDATED=false
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)= ]] || continue
+        key="${BASH_REMATCH[1]}"
+        if ! sudo grep -qE "^${key}=" "$env_file"; then
+            printf '%s\n' "$line" | sudo tee -a "$env_file" >/dev/null
+            ENV_UPDATED=true
+        fi
+    done < "$example_file"
+}
+
+env_key_exists() {
+    local key="$1" env_file="$2"
+    sudo grep -qE "^${key}=" "$env_file"
+}
+
+read_env_value() {
+    local key="$1" env_file="$2" variable="$3" value
+    value="$(sudo sed -nE "s/^${key}=(.*)$/\1/p" "$env_file" | sed -n '1p')"
+    value="${value#\"}"
+    value="${value%\"}"
+    printf -v "$variable" '%s' "$value"
 }
 
 configure_database_env() {
@@ -222,31 +225,33 @@ ensure_database_config() {
         return
     fi
 
-    local choice
-    echo
-    echo 'Database driver:'
-    echo '  1) SQLite (recommended default)'
-    echo '  2) MySQL'
-    read -r -p 'Choose database [1]: ' choice
-    choice="${choice:-1}"
+    if [[ "$DATABASE_DRIVER" == sqlite ]]; then
+        DATABASE_CONFIG_READY=true
 
-    case "$choice" in
-        1)
-            DATABASE_DRIVER='sqlite'
-            ;;
-        2)
-            DATABASE_DRIVER='mysql'
-            prompt_value 'MySQL host' MYSQL_HOST '127.0.0.1' || return 1
-            prompt_value 'MySQL port' MYSQL_PORT '3306' || return 1
-            prompt_value 'MySQL database' MYSQL_DATABASE || return 1
-            prompt_value 'MySQL username' MYSQL_USERNAME || return 1
-            prompt_secret 'MySQL password' MYSQL_PASSWORD || return 1
-            ;;
-        *)
-            die 'Invalid database selection'
-            return 1
-            ;;
-    esac
+        return
+    fi
+    if [[ "$DATABASE_DRIVER" != mysql ]]; then
+        die 'Invalid database selection'
+
+        return 1
+    fi
+
+    local env_file="$APP_FOLDER/shared/.env"
+    if [[ "$ENV_FILE_CREATED" != true ]] && env_key_exists DB_HOST "$env_file" &&
+        env_key_exists DB_PORT "$env_file" && env_key_exists DB_DATABASE "$env_file" &&
+        env_key_exists DB_USERNAME "$env_file" && env_key_exists DB_PASSWORD "$env_file"; then
+        read_env_value DB_HOST "$env_file" MYSQL_HOST
+        read_env_value DB_PORT "$env_file" MYSQL_PORT
+        read_env_value DB_DATABASE "$env_file" MYSQL_DATABASE
+        read_env_value DB_USERNAME "$env_file" MYSQL_USERNAME
+        read_env_value DB_PASSWORD "$env_file" MYSQL_PASSWORD
+    else
+        prompt_value 'MySQL host' MYSQL_HOST '127.0.0.1' || return 1
+        prompt_value 'MySQL port' MYSQL_PORT '3306' || return 1
+        prompt_value 'MySQL database' MYSQL_DATABASE || return 1
+        prompt_value 'MySQL username' MYSQL_USERNAME || return 1
+        prompt_secret 'MySQL password' MYSQL_PASSWORD || return 1
+    fi
 
     DATABASE_CONFIG_READY=true
 }

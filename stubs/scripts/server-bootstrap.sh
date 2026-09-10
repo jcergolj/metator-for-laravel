@@ -5,6 +5,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$SCRIPT_DIR/lib/common.sh"
 
+GITHUB_REPOSITORY='__GITHUB_REPOSITORY__'
+APP_FOLDER='__DEPLOY_PATH__'
+DOMAIN='__DOMAIN__'
+SERVER_IP='__SERVER_IP__'
+CONFIGURE_DEPLOY_USER_LOGIN='__CONFIGURE_DEPLOY_USER_LOGIN__'
+USE_CLOUDFLARE='__USE_CLOUDFLARE__'
+USE_SCHEDULER='__USE_SCHEDULER__'
+USE_QUEUE='__USE_QUEUE__'
+USE_HORIZON='__USE_HORIZON__'
+DATABASE_DRIVER='__DATABASE_DRIVER__'
+ENV_EXAMPLE_FILE="$SCRIPT_DIR/.env.example"
+
 for step_file in "$SCRIPT_DIR"/steps/*.sh; do
     source "$step_file"
 done
@@ -19,12 +31,7 @@ PHP_FPM_SERVICE="php${PHP_VERSION}-fpm"
 PHP_FPM_SOCKET="/run/php/${PHP_FPM_SERVICE}.sock"
 PHP_PACKAGE_PREFIX="php${PHP_VERSION}"
 
-prompt_value 'GitHub repository (owner/repository)' GITHUB_REPOSITORY
-DEFAULT_APP_NAME="${GITHUB_REPOSITORY##*/}"
-prompt_value 'Application folder' APP_FOLDER "/var/www/${DEFAULT_APP_NAME}"
-prompt_value 'Domain' DOMAIN
 require_safe_inputs
-detect_server_ip
 
 APP_NAME="$(basename "$APP_FOLDER")"
 configure_github_identity
@@ -43,26 +50,32 @@ echo "  PHP-FPM socket:     $PHP_FPM_SOCKET"
 echo "  Shared .env file:   $APP_FOLDER/shared/.env"
 echo "  Caddy site file:    $CADDY_SITE"
 echo "  Supervisor file:    $SUPERVISOR_FILE"
-echo '  Cloudflare DNS:     decide in step'
-echo '  Database:           choose in step'
-echo '  Scheduler:          decide in step'
-echo '  Queue workers:      decide in step'
-echo '  SSH login key:      decide in step'
+echo "  Cloudflare DNS:     $USE_CLOUDFLARE"
+echo "  Database:           $DATABASE_DRIVER"
+echo "  Scheduler:          $USE_SCHEDULER"
+echo "  Queue workers:      $USE_QUEUE"
+echo "  SSH login key:      $CONFIGURE_DEPLOY_USER_LOGIN"
 echo
-read -r -p 'Press Enter to begin or q to quit: ' initial_answer
-[[ "$initial_answer" != q && "$initial_answer" != Q ]] || exit 0
 
 run_step 'Verify server prerequisites' \
     'Checks required commands, creates the deployment user when missing, and verifies the PHP-FPM socket.' \
     step_prerequisites
 
-run_step 'Configure deployer SSH login' \
-    'Creates the deployer user when missing, installs your public key into authorized_keys, and fixes SSH permissions.' \
-    step_deployer_login
+if [[ "$CONFIGURE_DEPLOY_USER_LOGIN" == true ]]; then
+    run_step 'Configure deployer SSH login' \
+        'Creates the deployer user when missing, installs your public key into authorized_keys, and fixes SSH permissions.' \
+        step_deployer_login
+else
+    skip_step 'Configure deployer SSH login'
+fi
 
-run_step 'Configure Cloudflare DNS' \
-    'Checks for the selected domain A record and creates it only when missing.' \
-    step_cloudflare_dns
+if [[ "$USE_CLOUDFLARE" == true ]]; then
+    run_step 'Configure Cloudflare DNS' \
+        'Checks for the selected domain A record and creates it only when missing.' \
+        step_cloudflare_dns
+else
+    skip_step 'Configure Cloudflare DNS'
+fi
 
 run_step 'Configure reusable GitHub SSH access' \
     'Creates an app-specific deployer SSH key when missing, configures its GitHub alias, and verifies repository access.' \
@@ -84,13 +97,21 @@ run_step 'Configure Caddy' \
     "Creates and validates the Caddy site configuration at ${CADDY_SITE}, then waits for your review confirmation." \
     step_caddy
 
-run_step 'Configure Laravel scheduler' \
-    'Adds one scheduler entry using the current release symlink when selected.' \
-    step_scheduler
+if [[ "$USE_SCHEDULER" == true ]]; then
+    run_step 'Configure Laravel scheduler' \
+        'Adds one scheduler entry using the current release symlink when selected.' \
+        step_scheduler
+else
+    skip_step 'Configure Laravel scheduler'
+fi
 
-run_step 'Configure queue workers' \
-    "Creates the Supervisor program at ${SUPERVISOR_FILE} for Horizon or queue:work when selected, then waits for your review confirmation." \
-    step_workers
+if [[ "$USE_QUEUE" == true ]]; then
+    run_step 'Configure queue workers' \
+        "Creates the Supervisor program at ${SUPERVISOR_FILE} for Horizon or queue:work when selected, then waits for your review confirmation." \
+        step_workers
+else
+    skip_step 'Configure queue workers'
+fi
 
 step_deployer_instructions
 print_step_summary

@@ -26,8 +26,12 @@ Host ${GITHUB_ALIAS}
     IdentitiesOnly yes
 # END ${GITHUB_CONFIG_MARKER}
 EOF
-    sudo install -m 600 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$temporary" "$ssh_config"
+    if ! sudo cmp -s "$temporary" "$ssh_config"; then
+        sudo install -m 600 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$temporary" "$ssh_config"
+    fi
     rm -f "$temporary"
+    sudo chmod 600 "$ssh_config"
+    sudo chmod 600 "$GITHUB_KEY"
     sudo chown -R "$DEPLOY_USER:$DEPLOY_USER" "/home/${DEPLOY_USER}/.ssh"
 
     if ! sudo -u "$DEPLOY_USER" git ls-remote "$GITHUB_URL" HEAD >/dev/null; then

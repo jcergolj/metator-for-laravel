@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 
 step_caddy() {
-    if [[ -f "$CADDY_SITE" ]]; then
-        warn "Updating existing Caddy site file at $CADDY_SITE"
-    else
-        warn "Creating Caddy site file at $CADDY_SITE"
-    fi
     if [[ ! -f "$CADDY_CERT" ]]; then
         die "Missing certificate: $CADDY_CERT"
         return 1
@@ -15,12 +10,14 @@ step_caddy() {
         return 1
     fi
     sudo install -d -m 755 -o root -g root /etc/caddy/sites-enabled
+    local caddyfile_changed=false
     if ! sudo grep -Fq 'import /etc/caddy/sites-enabled/*.caddy' /etc/caddy/Caddyfile; then
         printf '\nimport /etc/caddy/sites-enabled/*.caddy\n' |
             sudo tee -a /etc/caddy/Caddyfile >/dev/null
+        caddyfile_changed=true
     fi
 
-    local temporary backup=''
+    local temporary backup='' changed=false
     temporary="$(mktemp)"
     cat > "$temporary" <<EOF
 ${DOMAIN} {
@@ -31,6 +28,20 @@ ${DOMAIN} {
     tls ${CADDY_CERT} ${CADDY_KEY}
 }
 EOF
+    if [[ "$caddyfile_changed" == true ]] || ! sudo cmp -s "$temporary" "$CADDY_SITE"; then
+        changed=true
+    fi
+    if [[ "$changed" != true ]]; then
+        rm -f "$temporary"
+        ok 'Caddy configuration is already current'
+
+        return
+    fi
+    if sudo test -f "$CADDY_SITE"; then
+        warn "Updating existing Caddy site file at $CADDY_SITE"
+    else
+        warn "Creating Caddy site file at $CADDY_SITE"
+    fi
     if sudo test -f "$CADDY_SITE"; then
         backup="${CADDY_SITE}.bak.$(date +%Y%m%d%H%M%S)"
         sudo cp -a "$CADDY_SITE" "$backup"

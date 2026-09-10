@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 step_prerequisites() {
-    for command in php composer caddy git systemctl sudo sed grep; do
+    for command in php composer caddy git systemctl sudo sed grep cmp; do
         if ! command -v "$command" >/dev/null 2>&1; then
             die "$command is not installed"
             return 1
