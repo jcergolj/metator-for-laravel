@@ -25,10 +25,10 @@ class InstallDeployerScaffoldingCommand extends Command
         $stubRoot = dirname(__DIR__, 2).'/stubs';
         $basePath = $this->laravel->basePath();
         $project = basename($basePath);
-        $envExample = $basePath.'/.env.example';
+        $envExample = $stubRoot.'/.env.example';
 
         if (! $this->files->exists($envExample)) {
-            throw new \RuntimeException("Missing .env.example file: {$envExample}");
+            throw new \RuntimeException("Missing .env.example stub: {$envExample}");
         }
 
         $placeholders = [
@@ -147,7 +147,10 @@ class InstallDeployerScaffoldingCommand extends Command
         $this->info('Metator scaffolding installed.');
         $this->line('Next steps:');
         $this->line('  1. Review deploy.php');
-        $this->line('  2. Copy ./scripts to the server and run ./scripts/server-bootstrap.sh');
+        $this->line('  2. Copy ./scripts to the server:');
+        $this->line('     scp -r ./scripts root@your-server:/var/scripts/');
+        $this->line('  3. Run the bootstrap script:');
+        $this->line('     ssh root@your-server "chmod +x /var/scripts/server-bootstrap.sh && /var/scripts/server-bootstrap.sh"');
 
         return self::SUCCESS;
     }

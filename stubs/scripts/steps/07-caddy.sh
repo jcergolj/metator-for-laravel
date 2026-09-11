@@ -53,6 +53,7 @@ EOF
     fi
     sudo install -m 644 -o root -g root "$temporary" "$CADDY_SITE"
     rm -f "$temporary"
+    sudo caddy fmt --overwrite /etc/caddy/Caddyfile 2>/dev/null || true
     if ! sudo caddy validate --config /etc/caddy/Caddyfile; then
         [[ -n "$backup" ]] && sudo cp -a "$backup" "$CADDY_SITE" || sudo rm -f "$CADDY_SITE"
         if [[ "$caddyfile_changed" == true ]]; then
