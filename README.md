@@ -56,8 +56,10 @@ credentials and configuration reviews, then prints a step summary.
 
 ## Deploy
 
-Review `deploy.php`, including any queue restart hooks, then run locally:
+Review `deploy.php` and select the configured worker type. Horizon is the
+default; use `WORKER_TYPE=queue` for standard queue workers:
 
 ```bash
+WORKER_TYPE=queue \
 vendor/bin/dep deploy production
 ```

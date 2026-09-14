@@ -6,6 +6,7 @@ COMMAND_FILE="$ROOT_DIR/src/Commands/InstallDeployerScaffoldingCommand.php"
 
 command_text="$(<"$COMMAND_FILE")"
 deploy_stub="$(<"$ROOT_DIR/stubs/deploy.php.stub")"
+instructions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/10-deployer-instructions.sh")"
 common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 
 [[ "$command_text" == *'use function Laravel\Prompts\text;'* ]]
@@ -17,6 +18,12 @@ common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$command_text" != *github-deployer* ]]
 [[ "$deploy_stub" == *"__SERVER_IP__"* ]]
 [[ "$deploy_stub" == *"__GIT_DEPLOYER_NAME__"* ]]
+[[ "$deploy_stub" == *"set('worker_type', getenv('WORKER_TYPE') ?: 'horizon');"* ]]
+[[ "$deploy_stub" == *"artisan horizon:terminate"* ]]
+[[ "$deploy_stub" == *"artisan queue:restart"* ]]
+[[ "$deploy_stub" == *"deploy:verify-workers"* ]]
+[[ "$instructions_stub" == *'deploy.php already terminates Horizon'* ]]
+[[ "$instructions_stub" == *'Deploy with WORKER_TYPE=queue'* ]]
 [[ "$common_stub" == *"__GIT_DEPLOYER_NAME__"* ]]
 [[ "$command_text" == *".env.example"* ]]
 

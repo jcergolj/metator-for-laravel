@@ -14,16 +14,12 @@ step_deployer_instructions() {
     if [[ "$USE_QUEUE" == true ]]; then
         echo
         if [[ "$USE_HORIZON" == true ]]; then
-            echo '  Horizon: add this task and hook:'
+            echo '  Horizon: deploy.php already terminates Horizon after the new release is live.'
             echo '  Horizon server setup: scripts/server-bootstrap.sh installs Redis and writes the Supervisor program.'
-            echo "    task('deploy:horizon', function () {"
-            echo "        run('cd {{release_path}} && {{bin/php}} artisan horizon:terminate');"
-            echo '    });'
-            echo "    after('deploy:symlink', 'deploy:horizon');"
         else
-            echo '  Queue workers: add this hook after deploy:symlink:'
+            echo '  Queue workers: deploy.php restarts queue workers after the new release is live.'
             echo '  Queue worker server setup: scripts/server-bootstrap.sh writes the Supervisor queue:work program.'
-            echo "    after('deploy:symlink', 'artisan:queue:restart');"
+            echo '  Deploy with WORKER_TYPE=queue when invoking Deployer.'
         fi
     fi
     if [[ "$USE_QUEUE" != true ]]; then
