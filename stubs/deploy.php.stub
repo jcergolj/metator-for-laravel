@@ -55,6 +55,11 @@ task('deploy:restart-workers', function () {
     }
 });
 
+task('deploy:activate-workers', function () {
+    run('sudo supervisorctl reread');
+    run('sudo supervisorctl update');
+});
+
 task('deploy:verify-workers', function () {
     run('test "$(readlink -f {{deploy_path}}/current)" = "{{release_path}}"');
     run('sudo supervisorctl status {{application}}-worker:* | grep -q RUNNING');
@@ -63,7 +68,8 @@ task('deploy:verify-workers', function () {
     run("pgrep -af 'php .*{{deploy_path}}/current/artisan {$workerCommand}'");
 });
 
-after('deploy:symlink', 'deploy:restart-workers');
+after('deploy:symlink', 'deploy:activate-workers');
+after('deploy:activate-workers', 'deploy:restart-workers');
 after('deploy:restart-workers', 'deploy:verify-workers');
 
 // If your server still requires a PHP-FPM reload after symlinking the new
