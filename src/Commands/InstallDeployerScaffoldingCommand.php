@@ -166,6 +166,7 @@ class InstallDeployerScaffoldingCommand extends Command
     protected function availableSteps(string $directory): array
     {
         $steps = [];
+        $normalizedIds = [];
         foreach ($this->files->files($directory) as $file) {
             if ($file->getExtension() !== 'sh' || str_starts_with($file->getFilename(), '.')) {
                 continue;
@@ -183,22 +184,42 @@ class InstallDeployerScaffoldingCommand extends Command
                     throw new \RuntimeException("Step {$file->getFilename()} is missing @{$key} metadata.");
                 }
             }
+            if (preg_match('/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/', $metadata['id']) !== 1) {
+                throw new \RuntimeException("Step {$file->getFilename()} has invalid @id: {$metadata['id']}.");
+            }
+            if ($metadata['title'] === '' || $metadata['group'] === '') {
+                throw new \RuntimeException("Step {$file->getFilename()} has an empty @title or @group.");
+            }
+            foreach (['required', 'default'] as $boolean) {
+                if (! in_array($metadata[$boolean], ['true', 'false'], true)) {
+                    throw new \RuntimeException("Step {$file->getFilename()} has invalid @{$boolean}: {$metadata[$boolean]}.");
+                }
+            }
+            if (preg_match('/^(?:0|[1-9][0-9]*)$/', $metadata['order']) !== 1) {
+                throw new \RuntimeException("Step {$file->getFilename()} has invalid @order: {$metadata['order']}.");
+            }
+            $normalizedId = str_replace('-', '_', $metadata['id']);
+            if (isset($normalizedIds[$normalizedId])) {
+                throw new \RuntimeException("Steps {$normalizedIds[$normalizedId]} and {$file->getFilename()} collide as {$normalizedId}().");
+            }
+            $normalizedIds[$normalizedId] = $file->getFilename();
             $steps[] = [
                 'id' => $metadata['id'],
                 'title' => $metadata['title'],
                 'group' => $metadata['group'],
-                'required' => filter_var($metadata['required'], FILTER_VALIDATE_BOOLEAN),
-                'default' => filter_var($metadata['default'], FILTER_VALIDATE_BOOLEAN),
+                'required' => $metadata['required'] === 'true',
+                'default' => $metadata['default'] === 'true',
                 'order' => (int) $metadata['order'],
                 'file' => $file->getFilename(),
             ];
             $function = 'step_'.str_replace('-', '_', $metadata['id']);
-            if (preg_match('/function\s+'.preg_quote($function, '/').'\s*\(/', $contents) !== 1) {
+            if (preg_match('/(?:^|[;\s])(?:function\s+)?'.preg_quote($function, '/').'\s*\(\)\s*\{/', $contents) !== 1) {
                 throw new \RuntimeException("Step {$file->getFilename()} must define {$function}().");
             }
         }
 
-        usort($steps, fn (array $left, array $right): int => $left['order'] <=> $right['order']);
+        usort($steps, fn (array $left, array $right): int => [$left['order'], str_replace('-', '_', $left['id']), $left['file']]
+            <=> [$right['order'], str_replace('-', '_', $right['id']), $right['file']]);
 
         return $steps;
     }

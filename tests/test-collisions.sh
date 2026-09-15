@@ -127,7 +127,7 @@ printf 'APP_KEY=\nDB_CONNECTION=sqlite\n' > "$ENV_EXAMPLE_FILE"
 DATABASE_DRIVER=sqlite
 PHP_PACKAGE_PREFIX=php8.4
 EDITOR=true
-step_app_folder <<< ''
+ step_shared_env <<< ''
 [[ "$(<"$TEST_DIR$APP_FOLDER/shared/.env")" == *APP_KEY=keep-me* ]]
 step_database
 [[ "$(<"$TEST_DIR$APP_FOLDER/shared/database/database.sqlite")" == 'existing database bytes' ]]
@@ -152,7 +152,7 @@ APP_FOLDER=/var/www/new-app
 APP_NAME=new-app
 ENV_EXAMPLE_FILE="$TEST_DIR/example"
 printf 'APP_NAME=Laravel\nREDIS_PREFIX=laravel_\n' > "$ENV_EXAMPLE_FILE"
-step_app_folder <<< ''
+ step_shared_env <<< ''
 for prefix in REDIS_PREFIX CACHE_PREFIX HORIZON_PREFIX; do
     grep -qx "${prefix}=\"metator_new-app_\"" "$TEST_DIR$APP_FOLDER/shared/.env"
 done

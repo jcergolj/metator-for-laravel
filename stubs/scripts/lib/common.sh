@@ -147,6 +147,39 @@ step_metadata() {
     sed -nE "s/^# @${key}:[[:space:]]*(.*)$/\1/p" "$file" | sed -n '1p'
 }
 
+validate_step_metadata() {
+    local step_file id title group required default order normalized
+    local -A seen=()
+    for step_file in "$SCRIPT_DIR"/steps/*.sh; do
+        [[ -f "$step_file" ]] || continue
+        id="$(step_metadata "$step_file" id)"
+        title="$(step_metadata "$step_file" title)"
+        group="$(step_metadata "$step_file" group)"
+        required="$(step_metadata "$step_file" required)"
+        default="$(step_metadata "$step_file" default)"
+        order="$(step_metadata "$step_file" order)"
+        [[ "$id" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]] || { die "Invalid @id in $step_file: $id"; return 1; }
+        [[ -n "$title" ]] || { die "Empty @title in $step_file"; return 1; }
+        [[ -n "$group" ]] || { die "Empty @group in $step_file"; return 1; }
+        [[ "$required" == true || "$required" == false ]] || { die "Invalid @required in $step_file: $required"; return 1; }
+        [[ "$default" == true || "$default" == false ]] || { die "Invalid @default in $step_file: $default"; return 1; }
+        [[ "$order" =~ ^(0|[1-9][0-9]*)$ ]] || { die "Invalid @order in $step_file: $order"; return 1; }
+        normalized="${id//-/_}"
+        [[ -z "${seen[$normalized]+x}" ]] || { die "Duplicate normalized step ID $normalized in $step_file"; return 1; }
+        seen[$normalized]="$step_file"
+    done
+}
+
+validate_step_functions() {
+    local step_file id function_name
+    for step_file in "$SCRIPT_DIR"/steps/*.sh; do
+        [[ -f "$step_file" ]] || continue
+        id="$(step_metadata "$step_file" id)"
+        function_name="step_${id//-/_}"
+        declare -F "$function_name" >/dev/null || { die "Step function is missing: $function_name ($step_file)"; return 1; }
+    done
+}
+
 run_selected_steps() {
     local step_file id title required order function_name status
     local -a discovered=()
@@ -157,15 +190,7 @@ run_selected_steps() {
         title="$(step_metadata "$step_file" title)"
         required="$(step_metadata "$step_file" required)"
         order="$(step_metadata "$step_file" order)"
-        [[ -n "$id" && -n "$title" && -n "$required" && "$order" =~ ^[0-9]+$ ]] || {
-            die "Invalid step metadata: $step_file"
-            return 1
-        }
         function_name="step_${id//-/_}"
-        declare -F "$function_name" >/dev/null || {
-            die "Step function is missing: $function_name"
-            return 1
-        }
         discovered+=("${order}|${step_file}|${title}|${required}|${function_name}")
     done
 
@@ -175,7 +200,7 @@ run_selected_steps() {
         if [[ "$status" -ne 0 && "$required" == true ]]; then
             return 1
         fi
-    done < <(printf '%s\n' "${discovered[@]}" | sort -t '|' -k1,1n)
+    done < <(printf '%s\n' "${discovered[@]}" | sort -t '|' -k1,1n -k2,2)
 }
 
 require_safe_inputs() {

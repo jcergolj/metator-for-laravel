@@ -40,5 +40,11 @@ permissions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/06-permissions.sh")"
 [[ "$deploy_stub_text" == *"after('deploy:symlink', 'deploy:activate-workers')"* ]]
 [[ "$(<"$ROOT_DIR/stubs/scripts/steps/07-caddy.sh")" == *'# @group: web-server'* ]]
 [[ "$common_stub" == *'run_selected_steps'* ]]
+[[ "$command_text" == *"metadata['required'] === 'true'"* ]]
+[[ "$command_text" == *'normalizedIds'* ]]
+[[ "$common_stub" == *'validate_step_metadata'* ]]
+[[ "$common_stub" == *'validate_step_functions'* ]]
+[[ "$(<"$ROOT_DIR/stubs/scripts/steps/02-cloudflare.sh")" == *'step_cloudflare()'* ]]
+[[ "$(<"$ROOT_DIR/stubs/scripts/steps/04-shared-env.sh")" == *'step_shared_env()'* ]]
 
 printf '%s\n' 'Install prompt checks passed.'
