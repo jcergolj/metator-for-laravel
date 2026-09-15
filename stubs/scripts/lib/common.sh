@@ -179,20 +179,24 @@ ensure_cloudflare_config() {
 }
 
 set_env_value() {
-    local key="$1" value="$2" escaped desired
+    local key="$1" value="$2" escaped temporary line
     escaped="${value//\\/\\\\}"
-    escaped="${escaped//&/\\&}"
-    escaped="${escaped//|/\\|}"
     escaped="${escaped//\"/\\\"}"
-    desired="${key}=\"${escaped}\""
+    escaped="${escaped//\$/\\\$}"
 
-    if sudo grep -qxF "$desired" "$APP_FOLDER/shared/.env"; then
-        return
-    fi
     if sudo grep -qE "^${key}=" "$APP_FOLDER/shared/.env"; then
-        sudo sed -i "s|^${key}=.*|${key}=\"${escaped}\"|" "$APP_FOLDER/shared/.env"
+        temporary="$(mktemp)"
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            if [[ "$line" == "$key="* ]]; then
+                printf '%s\n' "${key}=\"${escaped}\""
+            else
+                printf '%s\n' "$line"
+            fi
+        done < "$APP_FOLDER/shared/.env" > "$temporary"
+        sudo cp "$temporary" "$APP_FOLDER/shared/.env"
+        rm -f "$temporary"
     else
-        printf '%s\n' "$desired" |
+        printf '%s\n' "${key}=\"${escaped}\"" |
             sudo tee -a "$APP_FOLDER/shared/.env" >/dev/null
     fi
     ENV_UPDATED=true
