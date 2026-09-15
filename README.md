@@ -45,6 +45,13 @@ step_install_imagemagick() {
 }
 ```
 
+Step IDs must start with a lowercase letter and contain only lowercase letters,
+numbers, and single hyphens. `@required` and `@default` must be exactly `true`
+or `false`; `@order` must be a non-negative integer. IDs that become the same
+after hyphens are replaced with underscores are rejected. Functions may use
+either `step_example() {` or `function step_example() {` syntax. Steps with
+equal order values run in normalized ID order.
+
 The metadata fields mean:
 
 - `@id`: unique step ID. It determines the function name.

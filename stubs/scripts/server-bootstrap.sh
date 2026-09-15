@@ -59,10 +59,12 @@ echo "  Supervisor file:    $SUPERVISOR_FILE"
 echo "  Database:           $DATABASE_DRIVER"
 echo
 
+validate_step_metadata || exit 1
 for step_file in "$SCRIPT_DIR"/steps/*.sh; do
     [[ -f "$step_file" ]] || continue
     source "$step_file"
 done
+validate_step_functions || exit 1
 
 claim_application_folder || exit 1
 run_selected_steps || {

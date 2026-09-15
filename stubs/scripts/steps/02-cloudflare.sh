@@ -6,7 +6,7 @@
 # @default: false
 # @order: 25
 
-step_cloudflare_dns() {
+step_cloudflare() {
     ensure_cloudflare_config || return 1
     if [[ "$USE_CLOUDFLARE" != true ]]; then
         ok 'Cloudflare DNS was not selected; DNS was not changed'

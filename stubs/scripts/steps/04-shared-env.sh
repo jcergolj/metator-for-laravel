@@ -6,7 +6,7 @@
 # @default: true
 # @order: 40
 
-step_app_folder() {
+step_shared_env() {
     local env_file="$APP_FOLDER/shared/.env"
     ENV_FILE_CREATED=false
 
