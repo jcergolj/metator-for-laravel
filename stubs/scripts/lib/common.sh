@@ -257,6 +257,24 @@ merge_env_example() {
     done < "$example_file"
 }
 
+ensure_production_env() {
+    local env_file="$1" app_key=''
+    if [[ "$ENV_FILE_CREATED" == true ]]; then
+        set_env_value APP_ENV production
+        set_env_value APP_DEBUG false
+    fi
+    if env_key_exists APP_KEY "$env_file"; then
+        read_env_value APP_KEY "$env_file" app_key
+    fi
+    if [[ -z "$app_key" || "$app_key" == __* ]]; then
+        set_env_value APP_KEY "base64:$(openssl rand -base64 32 | tr -d '\n')"
+    fi
+    if sudo grep -qE '__[A-Z0-9_]+__' "$env_file"; then
+        die "Unresolved placeholder remains in $env_file"
+        return 1
+    fi
+}
+
 env_key_exists() {
     local key="$1" env_file="$2"
     sudo grep -qE "^${key}=" "$env_file"

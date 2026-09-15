@@ -12,7 +12,8 @@ php artisan metator:install
 ```
 
 Installs Deployer and generates `deploy.php` and `scripts/`, including a copy of
-your application's `.env.example`. The installer publishes the available step
+your application's `.env.example`. The application must provide this file; the
+package template is not used as a fallback. The installer publishes the available step
 catalogue to `metator/steps/` and lets you select the steps to generate.
 
 The catalogue is also available explicitly through Laravel's publishing command:
@@ -172,6 +173,12 @@ same commands to update an existing server's scripts.
 
 Bootstrap executes the selected steps in their metadata order. It prompts for
 credentials and configuration reviews, then prints a step summary.
+
+On the first bootstrap, the shared environment is initialized for production,
+including `APP_ENV=production`, `APP_DEBUG=false`, an HTTPS `APP_URL`, and a
+generated `APP_KEY`. Existing values and keys are preserved on later runs, while
+the selected database settings may be updated. Review `shared/.env` before
+confirming the bootstrap prompt.
 
 ## Multiple applications
 

@@ -28,6 +28,8 @@ common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$instructions_stub" == *'Deploy with WORKER_TYPE=queue'* ]]
 [[ "$common_stub" == *"__GIT_DEPLOYER_NAME__"* ]]
 [[ "$command_text" == *".env.example"* ]]
+[[ "$command_text" == *"\$basePath.'/.env.example'"* ]]
+[[ "$command_text" == *'Missing application .env.example'* ]]
 deploy_stub_text="$(<"$ROOT_DIR/stubs/deploy.php.stub")"
 workers_stub="$(<"$ROOT_DIR/stubs/scripts/steps/09-workers.sh")"
 permissions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/06-permissions.sh")"
