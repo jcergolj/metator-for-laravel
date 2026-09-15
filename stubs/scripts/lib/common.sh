@@ -106,7 +106,7 @@ run_step() {
     echo "$description"
     echo
     set +e
-    (set -e; "$function_name")
+    "$function_name"
     status=$?
     set -e
     if [[ "$status" -eq 0 ]]; then
