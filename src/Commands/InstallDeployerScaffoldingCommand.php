@@ -42,6 +42,15 @@ class InstallDeployerScaffoldingCommand extends Command
             required: true,
             hint: __('Select the steps that should be included in the generated server scripts.'),
         );
+        $workerType = select(
+            label: __('Worker mode'),
+            options: ['none' => __('No workers'), 'queue' => __('Standard queue workers'), 'horizon' => __('Laravel Horizon')],
+            default: 'none',
+        );
+        $selectedStepIds = array_values(array_filter($selectedStepIds, fn (string $id): bool => $id !== 'workers'));
+        if ($workerType !== 'none') {
+            $selectedStepIds[] = 'workers';
+        }
         $selectedSteps = array_values(array_filter(
             $availableSteps,
             fn (array $step): bool => in_array($step['id'], $selectedStepIds, true),
@@ -110,8 +119,9 @@ class InstallDeployerScaffoldingCommand extends Command
             '__CONFIGURE_DEPLOY_USER_LOGIN__' => 'true',
             '__USE_CLOUDFLARE__' => 'true',
             '__USE_SCHEDULER__' => 'true',
-            '__USE_QUEUE__' => 'true',
-            '__USE_HORIZON__' => 'false',
+            '__WORKER_TYPE__' => $workerType,
+            '__USE_QUEUE__' => $workerType === 'none' ? 'false' : 'true',
+            '__USE_HORIZON__' => $workerType === 'horizon' ? 'true' : 'false',
         ];
 
         $targets = [
