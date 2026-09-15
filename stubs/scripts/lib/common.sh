@@ -113,7 +113,7 @@ run_step() {
         STEP_SUCCESSFUL+=("STEP ${step_number} - ${title}")
         return
     fi
-    STEP_FAILED+=("STEP ${step_number} - ${title}")
+    STEP_FAILED+=("STEP ${step_number} - ${title} (exit status ${status})")
     warn "Step failed: $title"
     return "$status"
 }
@@ -140,6 +140,9 @@ print_step_summary() {
     print_step_group 'Performed successfully:' "${STEP_SUCCESSFUL[@]}"
     print_step_group 'Failed:' "${STEP_FAILED[@]}"
     print_step_group 'Skipped:' "${STEP_SKIPPED[@]}"
+    if [[ "${#STEP_FAILED[@]}" -gt 0 ]]; then
+        warn 'Selected steps failed. Correct the failures and rerun the bootstrap.'
+    fi
 }
 
 step_metadata() {
@@ -182,6 +185,7 @@ validate_step_functions() {
 
 run_selected_steps() {
     local step_file id title required order function_name status
+    local pipeline_status=0
     local -a discovered=()
 
     for step_file in "$SCRIPT_DIR"/steps/*.sh; do
@@ -195,12 +199,19 @@ run_selected_steps() {
     done
 
     while IFS='|' read -r order step_file title required function_name; do
-        run_step "$title" "Runs ${title}." "$function_name"
-        status=$?
+        if run_step "$title" "Runs ${title}." "$function_name"; then
+            status=0
+        else
+            status=$?
+        fi
         if [[ "$status" -ne 0 && "$required" == true ]]; then
-            return 1
+            return "$status"
+        fi
+        if [[ "$status" -ne 0 && "$pipeline_status" -eq 0 ]]; then
+            pipeline_status="$status"
         fi
     done < <(printf '%s\n' "${discovered[@]}" | sort -t '|' -k1,1n -k2,2)
+    return "$pipeline_status"
 }
 
 require_safe_inputs() {

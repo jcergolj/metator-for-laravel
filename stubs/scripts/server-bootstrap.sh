@@ -67,11 +67,13 @@ done
 validate_step_functions || exit 1
 
 claim_application_folder || exit 1
-run_selected_steps || {
-    print_step_summary
-    exit 1
-}
+bootstrap_status=0
+run_selected_steps || bootstrap_status=$?
 print_step_summary
+
+if [[ "$bootstrap_status" -ne 0 ]]; then
+    exit "$bootstrap_status"
+fi
 
 echo
 ok 'Server setup finished'
