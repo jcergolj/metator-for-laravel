@@ -45,32 +45,34 @@ task('deploy:cache', function () {
 after('deploy:vendors', 'deploy:assets');
 after('artisan:migrate', 'deploy:cache');
 
-task('deploy:restart-workers', function () {
-    if (get('worker_type') === 'horizon') {
-        run('cd {{release_path}} && {{bin/php}} artisan horizon:terminate');
-    } elseif (get('worker_type') === 'queue') {
-        run('cd {{release_path}} && {{bin/php}} artisan queue:restart');
-    } else {
-        throw new \RuntimeException('WORKER_TYPE must be either horizon or queue');
-    }
-});
+if ('__USE_QUEUE__' === 'true') {
+    task('deploy:activate-workers', function () {
+        run('sudo supervisorctl reread');
+        run('sudo supervisorctl update');
+    });
 
-task('deploy:activate-workers', function () {
-    run('sudo supervisorctl reread');
-    run('sudo supervisorctl update');
-});
+    task('deploy:restart-workers', function () {
+        if (get('worker_type') === 'horizon') {
+            run('cd {{release_path}} && {{bin/php}} artisan horizon:terminate');
+        } elseif (get('worker_type') === 'queue') {
+            run('cd {{release_path}} && {{bin/php}} artisan queue:restart');
+        } else {
+            throw new \RuntimeException('WORKER_TYPE must be either horizon or queue');
+        }
+    });
 
-task('deploy:verify-workers', function () {
-    run('test "$(readlink -f {{deploy_path}}/current)" = "{{release_path}}"');
-    run('sudo supervisorctl status {{application}}-worker:* | grep -q RUNNING');
+    task('deploy:verify-workers', function () {
+        run('test "$(readlink -f {{deploy_path}}/current)" = "{{release_path}}"');
+        run('sudo supervisorctl status {{application}}-worker:* | grep -q RUNNING');
 
-    $workerCommand = get('worker_type') === 'horizon' ? 'horizon' : 'queue:work';
-    run("pgrep -af 'php .*{{deploy_path}}/current/artisan {$workerCommand}'");
-});
+        $workerCommand = get('worker_type') === 'horizon' ? 'horizon' : 'queue:work';
+        run("pgrep -af 'php .*{{deploy_path}}/current/artisan {$workerCommand}'");
+    });
 
-after('deploy:symlink', 'deploy:activate-workers');
-after('deploy:activate-workers', 'deploy:restart-workers');
-after('deploy:restart-workers', 'deploy:verify-workers');
+    after('deploy:symlink', 'deploy:activate-workers');
+    after('deploy:activate-workers', 'deploy:restart-workers');
+    after('deploy:restart-workers', 'deploy:verify-workers');
+}
 
 // If your server still requires a PHP-FPM reload after symlinking the new
 // release, uncomment this hook.
