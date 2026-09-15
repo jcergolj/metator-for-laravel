@@ -25,12 +25,12 @@ class InstallDeployerScaffoldingCommand extends Command
         $stubRoot = dirname(__DIR__, 2).'/stubs';
         $basePath = $this->laravel->basePath();
         $project = basename($basePath);
-        $envExample = $stubRoot.'/.env.example';
+        $envExample = $basePath.'/.env.example';
         $stepCatalogue = $basePath.'/metator/steps';
         $stepManifest = $stepCatalogue.'/.metator-package-manifest.json';
 
         if (! $this->files->exists($envExample)) {
-            throw new \RuntimeException("Missing .env.example stub: {$envExample}");
+            throw new \RuntimeException("Missing application .env.example: {$envExample}");
         }
 
         $this->publishStepCatalogue($stubRoot.'/scripts/steps', $stepCatalogue, $stepManifest);

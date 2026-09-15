@@ -24,6 +24,7 @@ step_app_folder() {
         return 1
     fi
     merge_env_example "$ENV_EXAMPLE_FILE" "$env_file"
+    ensure_production_env "$env_file" || return 1
     if [[ "$ENV_FILE_CREATED" == true ]]; then
         # Laravel defaults can share prefixes when every app is named Laravel.
         set_env_value REDIS_PREFIX "metator_${APP_NAME}_"
