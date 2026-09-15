@@ -28,10 +28,6 @@ USE_HORIZON='__USE_HORIZON__'
 DATABASE_DRIVER='__DATABASE_DRIVER__'
 ENV_EXAMPLE_FILE="$SCRIPT_DIR/.env.example"
 
-for step_file in "$SCRIPT_DIR"/steps/*.sh; do
-    source "$step_file"
-done
-
 PHP_VERSION="$(systemctl list-unit-files --type=service --no-legend 2>/dev/null |
     sed -nE 's/^(php([0-9]+\.[0-9]+)-fpm)\.service.*/\2/p' | sort -V | tail -n 1)"
 if [[ -z "$PHP_VERSION" ]]; then
@@ -59,83 +55,20 @@ echo "  Server public IP:   $SERVER_IP"
 echo "  PHP version:        $PHP_VERSION"
 echo "  PHP-FPM socket:     $PHP_FPM_SOCKET"
 echo "  Shared .env file:   $APP_FOLDER/shared/.env"
-echo "  Caddy site file:    $CADDY_SITE"
 echo "  Supervisor file:    $SUPERVISOR_FILE"
-echo "  Cloudflare DNS:     $USE_CLOUDFLARE"
 echo "  Database:           $DATABASE_DRIVER"
-echo "  Scheduler:          $USE_SCHEDULER"
-echo "  Queue workers:      $USE_QUEUE"
-echo "  SSH login key:      $CONFIGURE_DEPLOY_USER_LOGIN"
 echo
 
-run_step 'Verify server prerequisites' \
-    'Checks required commands, creates the deployment user when missing, and verifies the PHP-FPM socket.' \
-    step_prerequisites
+for step_file in "$SCRIPT_DIR"/steps/*.sh; do
+    [[ -f "$step_file" ]] || continue
+    source "$step_file"
+done
 
-if [[ "${#STEP_FAILED[@]}" -gt 0 ]]; then
-    print_step_summary
-    exit 1
-fi
 claim_application_folder || exit 1
-
-if [[ "$CONFIGURE_DEPLOY_USER_LOGIN" == true ]]; then
-    run_step 'Configure deployer SSH login' \
-        'Creates the deployer user when missing, installs your public key into authorized_keys, and fixes SSH permissions.' \
-        step_deployer_login
-else
-    skip_step 'Configure deployer SSH login'
-fi
-
-if [[ "$USE_CLOUDFLARE" == true ]]; then
-    run_step 'Configure Cloudflare DNS' \
-        'Checks for the selected domain A record and creates it only when missing.' \
-        step_cloudflare_dns
-else
-    skip_step 'Configure Cloudflare DNS'
-fi
-
-run_step 'Configure reusable GitHub SSH access' \
-    'Creates an app-specific deployer SSH key when missing, configures its GitHub alias, and verifies repository access.' \
-    step_github_key
-
-if [[ "${STEP_FAILED[*]}" == *'Configure reusable GitHub SSH access'* ]]; then
+run_selected_steps || {
     print_step_summary
     exit 1
-fi
-
-run_step 'Create the shared Laravel environment file' \
-    'Creates the persistent .env, writes the selected database settings, then waits for your review confirmation.' \
-    step_app_folder
-
-run_step 'Prepare the selected database' \
-    'Installs the required PHP database driver and prepares the persistent SQLite file when selected.' \
-    step_database
-
-run_step 'Verify shared-file permissions' \
-    'Sets deployer ownership and www-data group access on persistent Laravel files.' \
-    step_permissions
-
-run_step 'Configure Caddy' \
-    "Creates and validates the Caddy site configuration at ${CADDY_SITE}, then waits for your review confirmation." \
-    step_caddy
-
-if [[ "$USE_SCHEDULER" == true ]]; then
-    run_step 'Configure Laravel scheduler' \
-        'Adds one scheduler entry using the current release symlink when selected.' \
-        step_scheduler
-else
-    skip_step 'Configure Laravel scheduler'
-fi
-
-if [[ "$USE_QUEUE" == true ]]; then
-    run_step 'Configure queue workers' \
-        "Creates the Supervisor program at ${SUPERVISOR_FILE} for Horizon or queue:work when selected, then waits for your review confirmation." \
-        step_workers
-else
-    skip_step 'Configure queue workers'
-fi
-
-step_deployer_instructions
+}
 print_step_summary
 
 echo

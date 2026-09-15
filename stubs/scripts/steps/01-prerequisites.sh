@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: prerequisites
+# @title: Verify server prerequisites
+# @group: none
+# @required: true
+# @default: true
+# @order: 10
 
 step_prerequisites() {
     for command in php composer caddy git systemctl sudo sed grep cmp; do

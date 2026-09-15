@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: github-key
+# @title: Configure reusable GitHub SSH access
+# @group: none
+# @required: true
+# @default: true
+# @order: 30
 
 step_github_key() {
     sudo install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "/home/${DEPLOY_USER}/.ssh" || return 1

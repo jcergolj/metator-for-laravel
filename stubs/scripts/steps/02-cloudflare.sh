@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: cloudflare
+# @title: Configure Cloudflare DNS
+# @group: dns
+# @required: false
+# @default: false
+# @order: 25
 
 step_cloudflare_dns() {
     ensure_cloudflare_config || return 1

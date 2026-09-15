@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: permissions
+# @title: Verify shared-file permissions
+# @group: none
+# @required: true
+# @default: true
+# @order: 60
 
 step_permissions() {
     sudo chown -R "$DEPLOY_USER:www-data" "$APP_FOLDER/shared"

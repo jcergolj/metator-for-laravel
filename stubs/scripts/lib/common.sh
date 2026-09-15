@@ -115,6 +115,7 @@ run_step() {
     fi
     STEP_FAILED+=("STEP ${step_number} - ${title}")
     warn "Step failed: $title"
+    return "$status"
 }
 
 print_step_group() {
@@ -139,6 +140,42 @@ print_step_summary() {
     print_step_group 'Performed successfully:' "${STEP_SUCCESSFUL[@]}"
     print_step_group 'Failed:' "${STEP_FAILED[@]}"
     print_step_group 'Skipped:' "${STEP_SKIPPED[@]}"
+}
+
+step_metadata() {
+    local file="$1" key="$2"
+    sed -nE "s/^# @${key}:[[:space:]]*(.*)$/\1/p" "$file" | sed -n '1p'
+}
+
+run_selected_steps() {
+    local step_file id title required order function_name status
+    local -a discovered=()
+
+    for step_file in "$SCRIPT_DIR"/steps/*.sh; do
+        [[ -f "$step_file" ]] || continue
+        id="$(step_metadata "$step_file" id)"
+        title="$(step_metadata "$step_file" title)"
+        required="$(step_metadata "$step_file" required)"
+        order="$(step_metadata "$step_file" order)"
+        [[ -n "$id" && -n "$title" && -n "$required" && "$order" =~ ^[0-9]+$ ]] || {
+            die "Invalid step metadata: $step_file"
+            return 1
+        }
+        function_name="step_${id//-/_}"
+        declare -F "$function_name" >/dev/null || {
+            die "Step function is missing: $function_name"
+            return 1
+        }
+        discovered+=("${order}|${step_file}|${title}|${required}|${function_name}")
+    done
+
+    while IFS='|' read -r order step_file title required function_name; do
+        run_step "$title" "Runs ${title}." "$function_name"
+        status=$?
+        if [[ "$status" -ne 0 && "$required" == true ]]; then
+            return 1
+        fi
+    done < <(printf '%s\n' "${discovered[@]}" | sort -t '|' -k1,1n)
 }
 
 require_safe_inputs() {

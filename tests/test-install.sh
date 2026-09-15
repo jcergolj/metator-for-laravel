@@ -13,8 +13,10 @@ common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$command_text" == *"'Server IP address'"* ]]
 [[ "$command_text" == *"'Git SSH deployer name'"* ]]
 [[ "$command_text" == *"default: 'deployer-github-'.\$project"* ]]
-[[ "$command_text" == *'use function Laravel\Prompts\confirm;'* ]]
+[[ "$command_text" == *'use function Laravel\Prompts\multiselect;'* ]]
 [[ "$command_text" == *'use function Laravel\Prompts\select;'* ]]
+[[ "$command_text" == *"metator/steps"* ]]
+[[ "$command_text" == *".metator-manifest.json"* ]]
 [[ "$command_text" != *github-deployer* ]]
 [[ "$deploy_stub" == *"__SERVER_IP__"* ]]
 [[ "$deploy_stub" == *"__GIT_DEPLOYER_NAME__"* ]]
@@ -36,5 +38,7 @@ permissions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/06-permissions.sh")"
 [[ "$permissions_stub" == *'chmod 660'* ]]
 [[ "$deploy_stub_text" == *"task('deploy:activate-workers'"* ]]
 [[ "$deploy_stub_text" == *"after('deploy:symlink', 'deploy:activate-workers')"* ]]
+[[ "$(<"$ROOT_DIR/stubs/scripts/steps/07-caddy.sh")" == *'# @group: web-server'* ]]
+[[ "$common_stub" == *'run_selected_steps'* ]]
 
 printf '%s\n' 'Install prompt checks passed.'

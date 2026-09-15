@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: scheduler
+# @title: Configure Laravel scheduler
+# @group: none
+# @required: false
+# @default: true
+# @order: 80
 
 step_scheduler() {
     if [[ "$USE_SCHEDULER" != true ]]; then

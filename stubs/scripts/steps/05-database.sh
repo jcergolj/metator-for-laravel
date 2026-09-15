@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: database
+# @title: Prepare the selected database
+# @group: none
+# @required: true
+# @default: true
+# @order: 50
 
 step_database() {
     ensure_database_config || return 1

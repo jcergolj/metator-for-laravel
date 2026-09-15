@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: deployer-login
+# @title: Configure deployer SSH login
+# @group: none
+# @required: false
+# @default: true
+# @order: 20
 
 step_deployer_login() {
     if [[ "$CONFIGURE_DEPLOY_USER_LOGIN" != true ]]; then

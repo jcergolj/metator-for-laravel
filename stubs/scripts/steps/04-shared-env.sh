@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: shared-env
+# @title: Create the shared Laravel environment file
+# @group: none
+# @required: true
+# @default: true
+# @order: 40
 
 step_app_folder() {
     local env_file="$APP_FOLDER/shared/.env"

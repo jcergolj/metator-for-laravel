@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: deployer-instructions
+# @title: Print deployer instructions
+# @group: none
+# @required: true
+# @default: true
+# @order: 100
 
 step_deployer_instructions() {
     local init_directory="/var/init-scripts/${GITHUB_REPOSITORY}"

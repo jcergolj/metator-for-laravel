@@ -4,7 +4,7 @@ namespace Jcergolj\MetatorForLaravel\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
-use function Laravel\Prompts\confirm;
+use function Laravel\Prompts\multiselect;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
 
@@ -26,10 +26,28 @@ class InstallDeployerScaffoldingCommand extends Command
         $basePath = $this->laravel->basePath();
         $project = basename($basePath);
         $envExample = $stubRoot.'/.env.example';
+        $stepCatalogue = $basePath.'/metator/steps';
+        $stepManifest = $stepCatalogue.'/.metator-package-manifest.json';
 
         if (! $this->files->exists($envExample)) {
             throw new \RuntimeException("Missing .env.example stub: {$envExample}");
         }
+
+        $this->publishStepCatalogue($stubRoot.'/scripts/steps', $stepCatalogue, $stepManifest);
+        $availableSteps = $this->availableSteps($stepCatalogue);
+        $selectedStepIds = multiselect(
+            label: __('Deployment steps'),
+            options: array_column($availableSteps, 'title', 'id'),
+            default: array_column(array_filter($availableSteps, fn (array $step): bool => $step['default']), 'id'),
+            required: true,
+            hint: __('Select the steps that should be included in the generated server scripts.'),
+        );
+        $selectedSteps = array_values(array_filter(
+            $availableSteps,
+            fn (array $step): bool => in_array($step['id'], $selectedStepIds, true),
+        ));
+
+        $this->validateSelectedSteps($availableSteps, $selectedSteps);
 
         $placeholders = [
             '__APP_NAME__' => $project,
@@ -89,59 +107,24 @@ class InstallDeployerScaffoldingCommand extends Command
                 ],
                 default: 'sqlite',
             ),
-            '__CONFIGURE_DEPLOY_USER_LOGIN__' => confirm(
-                label: __('Configure SSH login for the deployer user?'),
-                default: true,
-            ) ? 'true' : 'false',
-            '__USE_CLOUDFLARE__' => confirm(
-                label: __('Include Cloudflare DNS configuration?'),
-                default: false,
-            ) ? 'true' : 'false',
-            '__USE_SCHEDULER__' => confirm(
-                label: __('Include the Laravel scheduler configuration?'),
-                default: true,
-            ) ? 'true' : 'false',
-            '__USE_QUEUE__' => confirm(
-                label: __('Include queue worker configuration?'),
-                default: false,
-            ) ? 'true' : 'false',
+            '__CONFIGURE_DEPLOY_USER_LOGIN__' => 'true',
+            '__USE_CLOUDFLARE__' => 'true',
+            '__USE_SCHEDULER__' => 'true',
+            '__USE_QUEUE__' => 'true',
             '__USE_HORIZON__' => 'false',
         ];
-        if ($placeholders['__USE_QUEUE__'] === 'true') {
-            $placeholders['__USE_HORIZON__'] = confirm(
-                label: __('Use Horizon to manage queued jobs?'),
-                default: false,
-            ) ? 'true' : 'false';
-        }
 
         $targets = [
             'deploy.php.stub' => $basePath.'/deploy.php',
             'scripts/server-bootstrap.sh' => $basePath.'/scripts/server-bootstrap.sh',
             'scripts/lib/common.sh' => $basePath.'/scripts/lib/common.sh',
-            'scripts/steps/01-prerequisites.sh' => $basePath.'/scripts/steps/01-prerequisites.sh',
-            'scripts/steps/03-github-key.sh' => $basePath.'/scripts/steps/03-github-key.sh',
-            'scripts/steps/04-shared-env.sh' => $basePath.'/scripts/steps/04-shared-env.sh',
-            'scripts/steps/05-database.sh' => $basePath.'/scripts/steps/05-database.sh',
-            'scripts/steps/06-permissions.sh' => $basePath.'/scripts/steps/06-permissions.sh',
-            'scripts/steps/07-caddy.sh' => $basePath.'/scripts/steps/07-caddy.sh',
             'scripts/steps/10-deployer-instructions.sh' => $basePath.'/scripts/steps/10-deployer-instructions.sh',
         ];
-        if ($placeholders['__CONFIGURE_DEPLOY_USER_LOGIN__'] === 'true') {
-            $targets['scripts/steps/02-deployer-login.sh'] = $basePath.'/scripts/steps/02-deployer-login.sh';
-        }
-        if ($placeholders['__USE_CLOUDFLARE__'] === 'true') {
-            $targets['scripts/steps/02-cloudflare.sh'] = $basePath.'/scripts/steps/02-cloudflare.sh';
-        }
-        if ($placeholders['__USE_SCHEDULER__'] === 'true') {
-            $targets['scripts/steps/08-scheduler.sh'] = $basePath.'/scripts/steps/08-scheduler.sh';
-        }
-        if ($placeholders['__USE_QUEUE__'] === 'true') {
-            $targets['scripts/steps/09-workers.sh'] = $basePath.'/scripts/steps/09-workers.sh';
-        }
 
         foreach ($targets as $stub => $target) {
             $this->copyStub($stubRoot.'/'.$stub, $target, $placeholders);
         }
+        $this->writeSelectedSteps($selectedSteps, $stepCatalogue, $basePath.'/scripts/steps', $placeholders);
         $this->copyStub($envExample, $basePath.'/scripts/.env.example', $placeholders);
 
         $this->info('Metator scaffolding installed.');
@@ -153,6 +136,115 @@ class InstallDeployerScaffoldingCommand extends Command
         $this->line('     ssh root@your-server "chmod +x /var/scripts/server-bootstrap.sh && /var/scripts/server-bootstrap.sh"');
 
         return self::SUCCESS;
+    }
+
+    protected function publishStepCatalogue(string $source, string $target, string $manifest): void
+    {
+        $this->files->ensureDirectoryExists($target);
+        $packageFiles = $this->files->files($source);
+        $knownPackageFiles = $this->files->exists($manifest)
+            ? json_decode($this->files->get($manifest), true, flags: JSON_THROW_ON_ERROR)
+            : [];
+
+        foreach ($packageFiles as $file) {
+            $destination = $target.'/'.$file->getFilename();
+            if (! $this->files->exists($destination) || ($this->option('force') && in_array($file->getFilename(), $knownPackageFiles, true))) {
+                $this->files->copy($file->getPathname(), $destination);
+            }
+        }
+
+        $this->files->put($manifest, json_encode(
+            array_values(array_unique(array_merge($knownPackageFiles, array_map(
+                fn (\SplFileInfo $file): string => $file->getFilename(),
+                $packageFiles,
+            )))),
+            JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR,
+        ).PHP_EOL);
+    }
+
+    /** @return list<array{id: string, title: string, group: string, required: bool, default: bool, order: int, file: string}> */
+    protected function availableSteps(string $directory): array
+    {
+        $steps = [];
+        foreach ($this->files->files($directory) as $file) {
+            if ($file->getExtension() !== 'sh' || str_starts_with($file->getFilename(), '.')) {
+                continue;
+            }
+
+            $contents = $this->files->get($file->getPathname());
+            $metadata = [];
+            foreach (['id', 'title', 'group', 'required', 'default', 'order'] as $key) {
+                if (preg_match('/^# @'.preg_quote($key, '/').':[ \t]*(.+)$/m', $contents, $match) === 1) {
+                    $metadata[$key] = trim($match[1]);
+                }
+            }
+            foreach (['id', 'title', 'group', 'required', 'default', 'order'] as $key) {
+                if (! isset($metadata[$key])) {
+                    throw new \RuntimeException("Step {$file->getFilename()} is missing @{$key} metadata.");
+                }
+            }
+            $steps[] = [
+                'id' => $metadata['id'],
+                'title' => $metadata['title'],
+                'group' => $metadata['group'],
+                'required' => filter_var($metadata['required'], FILTER_VALIDATE_BOOLEAN),
+                'default' => filter_var($metadata['default'], FILTER_VALIDATE_BOOLEAN),
+                'order' => (int) $metadata['order'],
+                'file' => $file->getFilename(),
+            ];
+            $function = 'step_'.str_replace('-', '_', $metadata['id']);
+            if (preg_match('/function\s+'.preg_quote($function, '/').'\s*\(/', $contents) !== 1) {
+                throw new \RuntimeException("Step {$file->getFilename()} must define {$function}().");
+            }
+        }
+
+        usort($steps, fn (array $left, array $right): int => $left['order'] <=> $right['order']);
+
+        return $steps;
+    }
+
+    protected function validateSelectedSteps(array $availableSteps, array $selectedSteps): void
+    {
+        foreach ($availableSteps as $step) {
+            if ($step['required'] && ! in_array($step['id'], array_column($selectedSteps, 'id'), true)) {
+                throw new \RuntimeException("Required step is not selected: {$step['id']}.");
+            }
+        }
+
+        $groups = [];
+        foreach ($selectedSteps as $step) {
+            if ($step['group'] !== 'none') {
+                $groups[$step['group']][] = $step['id'];
+            }
+        }
+        foreach ($groups as $group => $steps) {
+            if (count($steps) > 1) {
+                throw new \RuntimeException("Select only one step from the {$group} group.");
+            }
+        }
+    }
+
+    protected function writeSelectedSteps(array $selectedSteps, string $source, string $target, array $placeholders): void
+    {
+        $manifest = dirname($target).'/.metator-manifest.json';
+        if ($this->files->exists($manifest) && ! $this->option('force')) {
+            $this->warn("Skipped existing generated steps: {$target}");
+
+            return;
+        }
+        $oldFiles = $this->files->exists($manifest)
+            ? json_decode($this->files->get($manifest), true, flags: JSON_THROW_ON_ERROR)
+            : [];
+        foreach ($oldFiles as $file) {
+            $this->files->delete($target.'/'.$file);
+        }
+        foreach ($selectedSteps as $step) {
+            $this->copyStub($source.'/'.$step['file'], $target.'/'.$step['file'], $placeholders);
+        }
+        $this->files->put($manifest, json_encode(
+            array_column($selectedSteps, 'file'),
+            JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR,
+        ).PHP_EOL);
     }
 
     protected function copyStub(string $source, string $target, array $placeholders): void

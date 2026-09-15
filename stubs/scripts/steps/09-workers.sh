@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: workers
+# @title: Configure queue workers
+# @group: none
+# @required: false
+# @default: false
+# @order: 90
 
 step_workers() {
     if [[ "$USE_QUEUE" != true ]]; then

@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# @id: caddy
+# @title: Configure Caddy
+# @group: web-server
+# @required: false
+# @default: true
+# @order: 70
 
 step_caddy() {
     if ! sudo test -f "$CADDY_CERT"; then
