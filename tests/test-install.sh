@@ -26,5 +26,15 @@ common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$instructions_stub" == *'Deploy with WORKER_TYPE=queue'* ]]
 [[ "$common_stub" == *"__GIT_DEPLOYER_NAME__"* ]]
 [[ "$command_text" == *".env.example"* ]]
+deploy_stub_text="$(<"$ROOT_DIR/stubs/deploy.php.stub")"
+workers_stub="$(<"$ROOT_DIR/stubs/scripts/steps/09-workers.sh")"
+permissions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/06-permissions.sh")"
+[[ "$common_stub" == *'while IFS= read -r line || [[ -n "$line" ]]'* ]]
+[[ "$common_stub" != *'sed -i "s|^${key}=.*'* ]]
+[[ "$workers_stub" == *'--timeout=60'* ]]
+[[ "$permissions_stub" == *'chmod 2770'* ]]
+[[ "$permissions_stub" == *'chmod 660'* ]]
+[[ "$deploy_stub_text" == *"task('deploy:activate-workers'"* ]]
+[[ "$deploy_stub_text" == *"after('deploy:symlink', 'deploy:activate-workers')"* ]]
 
 printf '%s\n' 'Install prompt checks passed.'

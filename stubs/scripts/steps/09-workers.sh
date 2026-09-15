@@ -14,7 +14,7 @@ step_workers() {
         worker_command="php ${APP_FOLDER}/current/artisan horizon"
         log_file="${APP_FOLDER}/shared/storage/logs/horizon.log"
     else
-        worker_command="php ${APP_FOLDER}/current/artisan queue:work --sleep=3 --tries=3 --timeout=90 --max-time=3600"
+        worker_command="php ${APP_FOLDER}/current/artisan queue:work --sleep=3 --tries=3 --timeout=60 --max-time=3600"
         log_file="${APP_FOLDER}/shared/storage/logs/queue-worker.log"
     fi
 
