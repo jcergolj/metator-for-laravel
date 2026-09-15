@@ -203,10 +203,10 @@ confirming the bootstrap prompt.
 
 ## Deploy
 
-Review `deploy.php` and select the configured worker type. Horizon is the
-default; use `WORKER_TYPE=queue` for standard queue workers:
+Review `deploy.php` and select one worker mode during installation: no workers,
+standard queue workers, or Horizon. The generated deploy command already matches
+that choice; no environment override is required:
 
 ```bash
-WORKER_TYPE=queue \
 vendor/bin/dep deploy production
 ```

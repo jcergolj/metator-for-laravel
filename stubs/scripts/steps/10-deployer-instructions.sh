@@ -25,7 +25,6 @@ step_deployer_instructions() {
         else
             echo '  Queue workers: deploy.php restarts queue workers after the new release is live.'
             echo '  Queue worker server setup: scripts/server-bootstrap.sh writes the Supervisor queue:work program.'
-            echo '  Deploy with WORKER_TYPE=queue when invoking Deployer.'
         fi
     fi
     if [[ "$USE_QUEUE" != true ]]; then

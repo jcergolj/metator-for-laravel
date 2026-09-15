@@ -14,7 +14,7 @@ set(
 
 set('branch', 'master');
 set('keep_releases', 5);
-set('worker_type', getenv('WORKER_TYPE') ?: 'horizon');
+set('worker_type', '__WORKER_TYPE__');
 
 host('production')
     ->setHostname('__SERVER_IP__')
@@ -45,7 +45,7 @@ task('deploy:cache', function () {
 after('deploy:vendors', 'deploy:assets');
 after('artisan:migrate', 'deploy:cache');
 
-if ('__USE_QUEUE__' === 'true') {
+if ('__WORKER_TYPE__' !== 'none') {
     task('deploy:activate-workers', function () {
         run('sudo supervisorctl reread');
         run('sudo supervisorctl update');
