@@ -16,6 +16,8 @@ fi
 
 source "$SCRIPT_DIR/lib/common.sh"
 
+require_commands systemctl sed sort tail
+
 GITHUB_REPOSITORY='__GITHUB_REPOSITORY__'
 APP_FOLDER='__DEPLOY_PATH__'
 DOMAIN='__DOMAIN__'
@@ -66,6 +68,7 @@ for step_file in "$SCRIPT_DIR"/steps/*.sh; do
 done
 validate_step_functions || exit 1
 
+prepare_deploy_user || exit 1
 claim_application_folder || exit 1
 bootstrap_status=0
 run_selected_steps || bootstrap_status=$?
