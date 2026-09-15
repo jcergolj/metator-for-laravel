@@ -160,9 +160,11 @@ files are skipped; use `--force` to regenerate them.
 
 ## Bootstrap the server
 
-Have PHP-FPM, Composer, Git, and the software required by the selected steps
-installed. Bootstrap uses the latest detected PHP-FPM service and requires
-`sudo` access.
+Have PHP-FPM, Composer, Git, systemd, and `sudo` installed before bootstrap.
+Bootstrap supports Debian/Ubuntu-style servers using `systemd`, a `www-data`
+group, and PHP-FPM services named `phpX.Y-fpm`. Caddy is required only when the
+Caddy step is selected; Cloudflare also requires `curl` and `jq`. Other selected
+steps may install their own packages during bootstrap.
 
 Copy scripts to `/var/init-scripts/<owner>/<repo>`. These commands create the
 directory if missing and copy all script contents, including `.env.example`:

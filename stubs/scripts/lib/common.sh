@@ -48,6 +48,26 @@ ensure_deploy_user_exists() {
     fi
 }
 
+prepare_deploy_user() {
+    ensure_deploy_user_exists || return 1
+    if ! getent group www-data >/dev/null 2>&1; then
+        sudo groupadd --system www-data || return 1
+    fi
+    if ! id -nG "$DEPLOY_USER" | tr ' ' '\n' | grep -qx www-data; then
+        sudo usermod -aG www-data "$DEPLOY_USER" || return 1
+    fi
+}
+
+require_commands() {
+    local command
+    for command in "$@"; do
+        command -v "$command" >/dev/null 2>&1 || {
+            die "$command must already be installed before bootstrap starts"
+            return 1
+        }
+    done
+}
+
 claim_application_folder() {
     local identity_file="$APP_FOLDER/.metator-repository"
     if sudo test -L "$APP_FOLDER"; then
