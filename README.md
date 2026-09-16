@@ -226,6 +226,10 @@ not read from remote stdin. Provisioning does not run Deployer. If SSH stops,
 inspect the server before retrying because the remote operation may have
 finished.
 
+`prepare-server` checks Ubuntu 24.04 and installs the selected PHP-FPM/CLI
+version and required base packages. `provision` reuses that prepared baseline;
+it does not install or upgrade shared packages.
+
 ## Deploy
 
 Review `deploy.php` and select one worker mode during installation: no workers,

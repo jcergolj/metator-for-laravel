@@ -219,6 +219,10 @@ run_selected_steps() {
     done
 
     while IFS='|' read -r order step_file title required function_name; do
+        if [[ "$METATOR_OPERATION" == prepare-server && "$(step_metadata "$step_file" id)" != prerequisites ]]; then
+            skip_step "$title"
+            continue
+        fi
         if run_step "$title" "Runs ${title}." "$function_name"; then
             status=0
         else

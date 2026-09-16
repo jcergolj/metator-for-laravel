@@ -22,6 +22,7 @@ readme_text="$(<"$ROOT_DIR/README.md")"
 [[ "$provider_text" == *'RunRemoteProvisioningCommand::class'* ]]
 [[ "$bootstrap_text" == *"METATOR_OPERATION=\"\${METATOR_OPERATION:-provision}\""* ]]
 [[ "$bootstrap_text" == *'prepare-server|provision)'* ]]
+[[ "$bootstrap_text" == *"METATOR_OPERATION"* ]]
 [[ "$readme_text" == *'metator:prepare-server --config=metator.production.php'* ]]
 [[ "$readme_text" == *'Provisioning does not run Deployer'* ]]
 
