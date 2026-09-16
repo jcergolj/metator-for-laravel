@@ -43,6 +43,6 @@ run_selected_steps >"$output_file" 2>&1 || status=$?
 status="${status:-0}"
 [[ "$status" == 37 ]]
 [[ "${STEP_FAILED[*]}" == *'Optional step (exit status 37)'* ]]
-[[ "$(<"$output_file")" == *'after-ran'* ]]
+[[ "$(<"$output_file")" != *'after-ran'* ]]
 
 printf '%s\n' 'Step runner checks passed.'
