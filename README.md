@@ -11,6 +11,15 @@ composer require --dev jcergolj/metator-for-laravel
 php artisan metator:install
 ```
 
+The installer stores the selected site ID, SSH target, domain, repository, PHP
+version, database, Redis, worker, and scheduler capabilities in a dedicated
+`metator.<name>.php` file. Site IDs are immutable and identify remote resources;
+filenames, repositories, domains, and checkout names do not. The file contains
+no secrets and the command makes no SSH or server changes.
+
+Use `--force` only when deliberately replacing an existing site's local
+configuration. Provisioning and deployment remain separate explicit commands.
+
 Installs Deployer and generates `deploy.php` and `scripts/`, including a copy of
 your application's `.env.example`. The application must provide this file; the
 package template is not used as a fallback. The installer publishes the available step
