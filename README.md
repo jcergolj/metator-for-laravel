@@ -82,6 +82,11 @@ The step can use variables and helpers provided by the bootstrap, including
 `APP_FOLDER`, `DOMAIN`, `PHP_VERSION`, `PHP_PACKAGE_PREFIX`, `DEPLOY_USER`,
 `sudo`, `ok`, `warn`, and `die`.
 
+Custom steps must return a nonzero status when they cannot complete. The
+pipeline stops at the first failed selected step, reports the failed operation,
+and does not print server readiness. Completed site-owned resources are kept so
+the operator can correct the problem and retry.
+
 After adding a step, run:
 
 ```bash
