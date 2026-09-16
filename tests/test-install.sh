@@ -50,5 +50,8 @@ permissions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/06-permissions.sh")"
 [[ "$common_stub" == *'validate_step_functions'* ]]
 [[ "$(<"$ROOT_DIR/stubs/scripts/steps/02-cloudflare.sh")" == *'step_cloudflare()'* ]]
 [[ "$(<"$ROOT_DIR/stubs/scripts/steps/04-shared-env.sh")" == *'step_shared_env()'* ]]
+[[ "$(<"$ROOT_DIR/stubs/scripts/steps/01-prerequisites.sh")" != *'php composer caddy git'* ]]
+[[ "$(<"$ROOT_DIR/stubs/scripts/steps/01-prerequisites.sh")" == *'require_commands curl jq'* ]]
+[[ "$common_stub" == *'prepare_deploy_user'* ]]
 
 printf '%s\n' 'Install prompt checks passed.'

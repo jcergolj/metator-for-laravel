@@ -11,6 +11,26 @@ composer require --dev jcergolj/metator-for-laravel
 php artisan metator:install
 ```
 
+The installer stores the selected site ID, SSH target, domain, repository, PHP
+version, database, Redis, worker, and scheduler capabilities in a dedicated
+`metator.<name>.php` file. Site IDs are immutable and identify remote resources;
+filenames, repositories, domains, and checkout names do not. The file contains
+no secrets and the command makes no SSH or server changes.
+
+The site ID defaults to the normalized repository name plus the configuration
+name, such as `billing-production`. The suggestion is never truncated; if it
+does not fit the site ID rules, enter a shorter explicit ID.
+
+The installer also asks for the deployment branch and writes it into the
+editable `deploy.php` recipe. The generated baseline does not assume Tailwind,
+Importmap, Node, or any other frontend tooling, so an ordinary Laravel
+application can deploy without optional asset packages. If an application needs
+asset builds, add its project-specific tasks and hook them into the editable
+recipe after installation.
+
+Use `--force` only when deliberately replacing an existing site's local
+configuration. Provisioning and deployment remain separate explicit commands.
+
 Installs Deployer and generates `deploy.php` and `scripts/`, including a copy of
 your application's `.env.example`. The application must provide this file; the
 package template is not used as a fallback. The installer publishes the available step
@@ -165,9 +185,11 @@ files are skipped; use `--force` to regenerate them.
 
 ## Bootstrap the server
 
-Have PHP-FPM, Composer, Git, and the software required by the selected steps
-installed. Bootstrap uses the latest detected PHP-FPM service and requires
-`sudo` access.
+Have PHP-FPM, Composer, Git, systemd, and `sudo` installed before bootstrap.
+Bootstrap supports Debian/Ubuntu-style servers using `systemd`, a `www-data`
+group, and PHP-FPM services named `phpX.Y-fpm`. Caddy is required only when the
+Caddy step is selected; Cloudflare also requires `curl` and `jq`. Other selected
+steps may install their own packages during bootstrap.
 
 Copy scripts to `/var/init-scripts/<owner>/<repo>`. These commands create the
 directory if missing and copy all script contents, including `.env.example`:
