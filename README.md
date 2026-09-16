@@ -17,6 +17,10 @@ version, database, Redis, worker, and scheduler capabilities in a dedicated
 filenames, repositories, domains, and checkout names do not. The file contains
 no secrets and the command makes no SSH or server changes.
 
+The site ID defaults to the normalized repository name plus the configuration
+name, such as `billing-production`. The suggestion is never truncated; if it
+does not fit the site ID rules, enter a shorter explicit ID.
+
 The installer also asks for the deployment branch and writes it into the
 editable `deploy.php` recipe. The generated baseline does not assume Tailwind,
 Importmap, Node, or any other frontend tooling, so an ordinary Laravel

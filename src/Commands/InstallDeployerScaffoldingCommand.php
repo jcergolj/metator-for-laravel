@@ -34,8 +34,20 @@ class InstallDeployerScaffoldingCommand extends Command
                 ? null
                 : __('Use lowercase letters, numbers, and hyphens, starting with a letter.'),
         );
+        $repository = text(
+            label: __('GitHub repository (owner/repository)'),
+            default: 'jcergolj/'.$project,
+            required: true,
+            validate: function (string $value): ?string {
+                return preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', $value) !== 1
+                    ? __('Repository must look like owner/repository.')
+                    : null;
+            },
+        );
+        $suggestedSiteId = $this->suggestedSiteId($repository, $configName);
         $siteId = text(
             label: __('Site ID'),
+            default: $suggestedSiteId,
             required: true,
             validate: fn (string $value): ?string => $this->validSiteId($value)
                 ? null
@@ -107,16 +119,7 @@ class InstallDeployerScaffoldingCommand extends Command
                         : null;
                 },
             ),
-            '__GITHUB_REPOSITORY__' => text(
-                label: __('GitHub repository (owner/repository)'),
-                default: 'jcergolj/'.$project,
-                required: true,
-                validate: function (string $value): ?string {
-                    return preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', $value) !== 1
-                        ? __('Repository must look like owner/repository.')
-                        : null;
-                },
-            ),
+            '__GITHUB_REPOSITORY__' => $repository,
             '__BRANCH__' => text(
                 label: __('Deployment branch'),
                 default: 'main',
@@ -388,5 +391,15 @@ class InstallDeployerScaffoldingCommand extends Command
     private function validSiteId(string $value): bool
     {
         return strlen($value) <= 24 && preg_match('/^[a-z](?:[a-z0-9]|-(?=[a-z0-9]))*$/', $value) === 1;
+    }
+
+    private function suggestedSiteId(string $repository, string $environment): ?string
+    {
+        $repositoryName = strtolower((string) strrchr($repository, '/'));
+        $repositoryName = ltrim($repositoryName, '/');
+        $repositoryName = trim((string) preg_replace('/[^a-z0-9]+/', '-', $repositoryName), '-');
+        $suggestion = $repositoryName.'-'.$environment;
+
+        return $this->validSiteId($suggestion) ? $suggestion : null;
     }
 }
