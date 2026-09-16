@@ -3,11 +3,16 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+METATOR_OPERATION="${METATOR_OPERATION:-provision}"
+case "$METATOR_OPERATION" in
+    prepare-server|provision) ;;
+    *) printf 'Unknown Metator operation: %s\n' "$METATOR_OPERATION" >&2; exit 1 ;;
+esac
 
 # All applications modify the same SSH config, crontab, and Caddyfile.
 # Keep the lock for the complete bootstrap, including interactive reviews.
 if [[ "$EUID" -ne 0 ]]; then
-    exec sudo bash "$SCRIPT_DIR/server-bootstrap.sh" "$@"
+    exec sudo env METATOR_OPERATION="$METATOR_OPERATION" bash "$SCRIPT_DIR/server-bootstrap.sh" "$@"
 fi
 exec 9>/var/lock/metator-bootstrap.lock
 if ! flock -n 9; then
@@ -61,6 +66,7 @@ echo "  PHP-FPM socket:     $PHP_FPM_SOCKET"
 echo "  Shared .env file:   $APP_FOLDER/shared/.env"
 echo "  Supervisor file:    $SUPERVISOR_FILE"
 echo "  Database:           $DATABASE_DRIVER"
+echo "  Operation:          $METATOR_OPERATION"
 echo
 
 validate_step_metadata || exit 1
