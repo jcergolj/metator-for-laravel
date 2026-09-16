@@ -185,28 +185,10 @@ files are skipped; use `--force` to regenerate them.
 
 ## Bootstrap the server
 
-Have PHP-FPM, Composer, Git, systemd, and `sudo` installed before bootstrap.
-Bootstrap supports Debian/Ubuntu-style servers using `systemd`, a `www-data`
-group, and PHP-FPM services named `phpX.Y-fpm`. Caddy is required only when the
-Caddy step is selected; Cloudflare also requires `curl` and `jq`. Other selected
-steps may install their own packages during bootstrap.
-
-Copy scripts to `/var/init-scripts/<owner>/<repo>`. These commands create the
-directory if missing and copy all script contents, including `.env.example`:
-
-```bash
-ssh -t user@SERVER_IP 'sudo install -d -m 755 -o "$(id -un)" -g "$(id -gn)" /var/init-scripts/OWNER/REPO'
-scp -r scripts/. user@SERVER_IP:/var/init-scripts/OWNER/REPO/
-ssh user@SERVER_IP
-cd /var/init-scripts/OWNER/REPO
-bash server-bootstrap.sh
-```
-
-Replace `OWNER/REPO` with your GitHub repository, e.g. `acme/billing`. Use the
-same commands to update an existing server's scripts.
-
-Bootstrap executes the selected steps in their metadata order. It prompts for
-credentials and configuration reviews, then prints a step summary.
+The remote Artisan commands upload the generated scripts and run them in their
+metadata order. The server must have PHP-FPM, Composer, Git, systemd, and
+`sudo` installed, plus noninteractive operator SSH access. The command prompts
+stay local; remote steps do not read from SSH stdin.
 
 On the first bootstrap, the shared environment is initialized for production,
 including `APP_ENV=production`, `APP_DEBUG=false`, an HTTPS `APP_URL`, and a
@@ -227,6 +209,22 @@ confirming the bootstrap prompt.
 - New environments get unique Redis/cache/Horizon prefixes. For existing apps
   sharing Redis, check `REDIS_PREFIX`, `CACHE_PREFIX`, and `HORIZON_PREFIX` are
   distinct and used by the app's configuration.
+
+## Remote workflow
+
+After `metator:install`, choose one site configuration for the remote operation:
+
+```bash
+php artisan metator:prepare-server --config=metator.production.php
+php artisan metator:provision --config=metator.production.php
+```
+
+Metator uploads the exact local `scripts/` directory to a fresh, site-owned
+staging directory, streams the remote output, and returns the remote exit
+status. The commands use the SSH target from the selected configuration and do
+not read from remote stdin. Provisioning does not run Deployer. If SSH stops,
+inspect the server before retrying because the remote operation may have
+finished.
 
 ## Deploy
 
