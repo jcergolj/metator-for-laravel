@@ -11,6 +11,26 @@ composer require --dev jcergolj/metator-for-laravel
 php artisan metator:install
 ```
 
+The installer stores the selected site ID, SSH target, domain, repository, PHP
+version, database, Redis, worker, and scheduler capabilities in a dedicated
+`metator.<name>.php` file. Site IDs are immutable and identify remote resources;
+filenames, repositories, domains, and checkout names do not. The file contains
+no secrets and the command makes no SSH or server changes.
+
+The site ID defaults to the normalized repository name plus the configuration
+name, such as `billing-production`. The suggestion is never truncated; if it
+does not fit the site ID rules, enter a shorter explicit ID.
+
+The installer also asks for the deployment branch and writes it into the
+editable `deploy.php` recipe. The generated baseline does not assume Tailwind,
+Importmap, Node, or any other frontend tooling, so an ordinary Laravel
+application can deploy without optional asset packages. If an application needs
+asset builds, add its project-specific tasks and hook them into the editable
+recipe after installation.
+
+Use `--force` only when deliberately replacing an existing site's local
+configuration. Provisioning and deployment remain separate explicit commands.
+
 Installs Deployer and generates `deploy.php` and `scripts/`, including a copy of
 your application's `.env.example`. The application must provide this file; the
 package template is not used as a fallback. The installer publishes the available step
@@ -81,6 +101,11 @@ step_install_php_ext_imagick() {
 The step can use variables and helpers provided by the bootstrap, including
 `APP_FOLDER`, `DOMAIN`, `PHP_VERSION`, `PHP_PACKAGE_PREFIX`, `DEPLOY_USER`,
 `sudo`, `ok`, `warn`, and `die`.
+
+Custom steps must return a nonzero status when they cannot complete. The
+pipeline stops at the first failed selected step, reports the failed operation,
+and does not print server readiness. Completed site-owned resources are kept so
+the operator can correct the problem and retry.
 
 After adding a step, run:
 

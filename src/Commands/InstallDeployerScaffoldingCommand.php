@@ -4,6 +4,7 @@ namespace Jcergolj\MetatorForLaravel\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
@@ -25,6 +26,39 @@ class InstallDeployerScaffoldingCommand extends Command
         $stubRoot = dirname(__DIR__, 2).'/stubs';
         $basePath = $this->laravel->basePath();
         $project = basename($basePath);
+        $configName = text(
+            label: __('Configuration name'),
+            default: 'production',
+            required: true,
+            validate: fn (string $value): ?string => preg_match('/^[a-z][a-z0-9-]*$/', $value) === 1
+                ? null
+                : __('Use lowercase letters, numbers, and hyphens, starting with a letter.'),
+        );
+        $repository = text(
+            label: __('GitHub repository (owner/repository)'),
+            default: 'jcergolj/'.$project,
+            required: true,
+            validate: function (string $value): ?string {
+                return preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', $value) !== 1
+                    ? __('Repository must look like owner/repository.')
+                    : null;
+            },
+        );
+        $suggestedSiteId = $this->suggestedSiteId($repository, $configName);
+        $siteId = text(
+            label: __('Site ID'),
+            default: $suggestedSiteId,
+            required: true,
+            validate: fn (string $value): ?string => $this->validSiteId($value)
+                ? null
+                : __('Use 1-24 lowercase letters or digits, with single hyphens between segments.'),
+        );
+        $siteConfiguration = $basePath.'/metator.'.$configName.'.php';
+        if ($this->files->exists($siteConfiguration) && ! $this->option('force')) {
+            $this->error("Site configuration already exists: {$siteConfiguration}. Use --force to replace it.");
+
+            return self::FAILURE;
+        }
         $envExample = $basePath.'/.env.example';
         $stepCatalogue = $basePath.'/metator/steps';
         $stepManifest = $stepCatalogue.'/.metator-package-manifest.json';
@@ -47,6 +81,21 @@ class InstallDeployerScaffoldingCommand extends Command
             options: ['none' => __('No workers'), 'queue' => __('Standard queue workers'), 'horizon' => __('Laravel Horizon')],
             default: 'none',
         );
+        $redisCapability = select(
+            label: __('Redis capability'),
+            options: [
+                'none' => __('Disabled'),
+                'cache' => __('Cache and sessions'),
+                'queue' => __('Queues, cache, and sessions'),
+            ],
+            default: 'none',
+        );
+        $schedulerEnabled = confirm(label: __('Enable the scheduler?'), default: true);
+        if ($workerType === 'horizon' && $redisCapability === 'none') {
+            $this->error('Laravel Horizon requires the Redis capability.');
+
+            return self::FAILURE;
+        }
         $selectedStepIds = array_values(array_filter($selectedStepIds, fn (string $id): bool => $id !== 'workers'));
         if ($workerType !== 'none') {
             $selectedStepIds[] = 'workers';
@@ -70,13 +119,14 @@ class InstallDeployerScaffoldingCommand extends Command
                         : null;
                 },
             ),
-            '__GITHUB_REPOSITORY__' => text(
-                label: __('GitHub repository (owner/repository)'),
-                default: 'jcergolj/'.$project,
+            '__GITHUB_REPOSITORY__' => $repository,
+            '__BRANCH__' => text(
+                label: __('Deployment branch'),
+                default: 'main',
                 required: true,
                 validate: function (string $value): ?string {
-                    return preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', $value) !== 1
-                        ? __('Repository must look like owner/repository.')
+                    return preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $value) !== 1
+                        ? __('Enter a valid Git branch name.')
                         : null;
                 },
             ),
@@ -86,6 +136,16 @@ class InstallDeployerScaffoldingCommand extends Command
                 validate: function (string $value): ?string {
                     return filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false
                         ? __('Enter a valid IPv4 address.')
+                        : null;
+                },
+            ),
+            '__SSH_USER__' => text(
+                label: __('Operator SSH user'),
+                default: 'jcergolj',
+                required: true,
+                validate: function (string $value): ?string {
+                    return preg_match('/^[A-Za-z_][A-Za-z0-9_-]*$/', $value) !== 1
+                        ? __('Enter a valid SSH username.')
                         : null;
                 },
             ),
@@ -116,13 +176,34 @@ class InstallDeployerScaffoldingCommand extends Command
                 ],
                 default: 'sqlite',
             ),
+            '__PHP_VERSION__' => select(
+                label: __('PHP version'),
+                options: ['8.4' => __('PHP 8.4'), '8.5' => __('PHP 8.5')],
+                default: '8.5',
+            ),
             '__CONFIGURE_DEPLOY_USER_LOGIN__' => 'true',
             '__USE_CLOUDFLARE__' => 'true',
-            '__USE_SCHEDULER__' => 'true',
+            '__USE_SCHEDULER__' => $schedulerEnabled ? 'true' : 'false',
             '__WORKER_TYPE__' => $workerType,
             '__USE_QUEUE__' => $workerType === 'none' ? 'false' : 'true',
             '__USE_HORIZON__' => $workerType === 'horizon' ? 'true' : 'false',
         ];
+
+        $this->files->put($siteConfiguration, "<?php\n\nreturn ".var_export([
+            'site_id' => $siteId,
+            'ssh' => [
+                'host' => $placeholders['__SERVER_IP__'],
+                'user' => $placeholders['__SSH_USER__'],
+            ],
+            'domain' => $placeholders['__DOMAIN__'],
+            'repository' => $placeholders['__GITHUB_REPOSITORY__'],
+            'php_version' => $placeholders['__PHP_VERSION__'],
+            'database' => $placeholders['__DATABASE_DRIVER__'] === 'mysql' ? 'mariadb' : 'sqlite',
+            'redis' => $redisCapability,
+            'worker' => $workerType,
+            'scheduler' => $schedulerEnabled,
+        ], true).";\n");
+        $this->info("Configured site: {$siteConfiguration}");
 
         $targets = [
             'deploy.php.stub' => $basePath.'/deploy.php',
@@ -305,5 +386,20 @@ class InstallDeployerScaffoldingCommand extends Command
     protected function replacePlaceholders(string $contents, array $placeholders): string
     {
         return str_replace(array_keys($placeholders), array_values($placeholders), $contents);
+    }
+
+    private function validSiteId(string $value): bool
+    {
+        return strlen($value) <= 24 && preg_match('/^[a-z](?:[a-z0-9]|-(?=[a-z0-9]))*$/', $value) === 1;
+    }
+
+    private function suggestedSiteId(string $repository, string $environment): ?string
+    {
+        $repositoryName = strtolower((string) strrchr($repository, '/'));
+        $repositoryName = ltrim($repositoryName, '/');
+        $repositoryName = trim((string) preg_replace('/[^a-z0-9]+/', '-', $repositoryName), '-');
+        $suggestion = $repositoryName.'-'.$environment;
+
+        return $this->validSiteId($suggestion) ? $suggestion : null;
     }
 }

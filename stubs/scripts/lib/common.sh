@@ -205,7 +205,6 @@ validate_step_functions() {
 
 run_selected_steps() {
     local step_file id title required order function_name status
-    local pipeline_status=0
     local -a discovered=()
 
     for step_file in "$SCRIPT_DIR"/steps/*.sh; do
@@ -224,14 +223,11 @@ run_selected_steps() {
         else
             status=$?
         fi
-        if [[ "$status" -ne 0 && "$required" == true ]]; then
+        if [[ "$status" -ne 0 ]]; then
             return "$status"
         fi
-        if [[ "$status" -ne 0 && "$pipeline_status" -eq 0 ]]; then
-            pipeline_status="$status"
-        fi
     done < <(printf '%s\n' "${discovered[@]}" | sort -t '|' -k1,1n -k2,2)
-    return "$pipeline_status"
+    return 0
 }
 
 require_safe_inputs() {

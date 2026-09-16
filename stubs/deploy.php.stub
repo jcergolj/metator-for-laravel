@@ -12,7 +12,7 @@ set(
     'git@__GIT_DEPLOYER_NAME__:__GITHUB_REPOSITORY__.git'
 );
 
-set('branch', 'master');
+set('branch', '__BRANCH__');
 set('keep_releases', 5);
 set('worker_type', '__WORKER_TYPE__');
 
@@ -31,18 +31,10 @@ add('shared_files', [
     'database/database.sqlite',
 ]);
 
-desc('Build frontend assets');
-task('deploy:assets', function () {
-    run('cd {{release_path}} && {{bin/php}} artisan tailwindcss:download --force');
-    run('cd {{release_path}} && {{bin/php}} artisan tailwindcss:build');
-    run('cd {{release_path}} && {{bin/php}} artisan importmap:optimize');
-});
-
 task('deploy:cache', function () {
     run('cd {{release_path}} && {{bin/php}} artisan optimize');
 });
 
-after('deploy:vendors', 'deploy:assets');
 after('artisan:migrate', 'deploy:cache');
 
 if ('__WORKER_TYPE__' !== 'none') {
