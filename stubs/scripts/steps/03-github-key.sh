@@ -37,7 +37,7 @@ step_github_key() {
                 print
             }
             END { if (inside) exit 1 }
-        ' "$ssh_config" > "$existing"; then
+        ' "$ssh_config" | tee "$existing" >/dev/null; then
             rm -f "$temporary" "$existing"
             die "SSH alias collision, repository mismatch, or invalid managed block in $ssh_config; choose a unique Git SSH deployer name"
             return 1

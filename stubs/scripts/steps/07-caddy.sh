@@ -61,7 +61,11 @@ EOF
     rm -f "$temporary"
     sudo caddy fmt --overwrite /etc/caddy/Caddyfile 2>/dev/null || true
     if ! sudo caddy validate --config /etc/caddy/Caddyfile; then
-        [[ -n "$backup" ]] && sudo cp -a "$backup" "$CADDY_SITE" || sudo rm -f "$CADDY_SITE"
+        if [[ -n "$backup" ]]; then
+            sudo cp -a "$backup" "$CADDY_SITE"
+        else
+            sudo rm -f "$CADDY_SITE"
+        fi
         if [[ "$caddyfile_changed" == true ]]; then
             if [[ "$caddyfile_existed" == true ]]; then
                 sudo cp -p "$caddyfile_backup" /etc/caddy/Caddyfile
