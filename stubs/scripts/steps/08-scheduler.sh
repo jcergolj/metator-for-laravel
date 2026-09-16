@@ -16,7 +16,7 @@ step_scheduler() {
     current_crontab="$(mktemp)"
     temporary="$(mktemp)"
     errors="$(mktemp)"
-    if ! LC_ALL=C sudo crontab -u www-data -l > "$current_crontab" 2> "$errors"; then
+    if ! LC_ALL=C sudo crontab -u www-data -l 2> "$errors" | tee "$current_crontab" >/dev/null; then
         if ! grep -qxF 'no crontab for www-data' "$errors"; then
             cat "$errors" >&2
             rm -f "$current_crontab" "$temporary" "$errors"
