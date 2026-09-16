@@ -17,6 +17,13 @@ version, database, Redis, worker, and scheduler capabilities in a dedicated
 filenames, repositories, domains, and checkout names do not. The file contains
 no secrets and the command makes no SSH or server changes.
 
+The installer also asks for the deployment branch and writes it into the
+editable `deploy.php` recipe. The generated baseline does not assume Tailwind,
+Importmap, Node, or any other frontend tooling, so an ordinary Laravel
+application can deploy without optional asset packages. If an application needs
+asset builds, add its project-specific tasks and hook them into the editable
+recipe after installation.
+
 Use `--force` only when deliberately replacing an existing site's local
 configuration. Provisioning and deployment remain separate explicit commands.
 

@@ -117,6 +117,16 @@ class InstallDeployerScaffoldingCommand extends Command
                         : null;
                 },
             ),
+            '__BRANCH__' => text(
+                label: __('Deployment branch'),
+                default: 'main',
+                required: true,
+                validate: function (string $value): ?string {
+                    return preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $value) !== 1
+                        ? __('Enter a valid Git branch name.')
+                        : null;
+                },
+            ),
             '__SERVER_IP__' => text(
                 label: __('Server IP address'),
                 required: true,
