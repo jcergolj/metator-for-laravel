@@ -15,7 +15,7 @@ if ! flock -n 9; then
     exit 1
 fi
 
-# shellcheck source=lib/common.sh
+# shellcheck source=stubs/scripts/lib/common.sh
 source "$SCRIPT_DIR/lib/common.sh"
 
 GITHUB_REPOSITORY='__GITHUB_REPOSITORY__'
