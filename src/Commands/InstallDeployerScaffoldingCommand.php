@@ -138,7 +138,7 @@ class InstallDeployerScaffoldingCommand extends Command
             ),
             '__SSH_USER__' => text(
                 label: __('Operator SSH user'),
-                default: 'ubuntu',
+                default: 'jcergolj',
                 required: true,
                 validate: function (string $value): ?string {
                     return preg_match('/^[A-Za-z_][A-Za-z0-9_-]*$/', $value) !== 1
