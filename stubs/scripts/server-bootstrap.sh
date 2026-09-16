@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090,SC2034
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,6 +15,7 @@ if ! flock -n 9; then
     exit 1
 fi
 
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/common.sh"
 
 require_commands systemctl sed sort tail

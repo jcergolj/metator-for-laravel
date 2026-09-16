@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -269,16 +270,14 @@ ensure_cloudflare_config() {
 }
 
 set_env_value() {
-    local key="$1" value="$2" escaped desired temporary source_file line
+    local key="$1" value="$2" escaped temporary source_file line
     escaped="${value//\\/\\\\}"
     escaped="${escaped//\"/\\\"}"
     escaped="${escaped//\$/\\\$}"
-    desired="${key}=\"${escaped}\""
-
     if sudo grep -qE "^${key}=" "$APP_FOLDER/shared/.env"; then
         temporary="$(mktemp)"
         source_file="$(mktemp)"
-        sudo sed -n '1,$p' "$APP_FOLDER/shared/.env" > "$source_file"
+        sudo sed -n '1,$p' "$APP_FOLDER/shared/.env" | tee "$source_file" >/dev/null
         while IFS= read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == "$key="* ]]; then
                 printf '%s\n' "${key}=\"${escaped}\""
