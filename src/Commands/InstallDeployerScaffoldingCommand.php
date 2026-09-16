@@ -122,7 +122,7 @@ class InstallDeployerScaffoldingCommand extends Command
             '__GITHUB_REPOSITORY__' => $repository,
             '__BRANCH__' => text(
                 label: __('Deployment branch'),
-                default: 'main',
+                default: 'master',
                 required: true,
                 validate: function (string $value): ?string {
                     return preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $value) !== 1
