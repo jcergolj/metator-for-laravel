@@ -27,6 +27,9 @@ class RemoteScriptRunner
         try {
             if ($environmentInput === null) {
                 $staging = $this->stageScripts($scriptsPath, $site, $operation);
+                $staging ??= sys_get_temp_dir().'/metator-staging-'.bin2hex(random_bytes(8));
+                $this->files->copyDirectory($scriptsPath, $staging);
+                $this->writeClientPublicKey($staging);
                 $this->archiveScripts($staging ?? $scriptsPath, $archive);
             } else {
                 $staging = sys_get_temp_dir().'/metator-staging-'.bin2hex(random_bytes(8));
@@ -49,7 +52,7 @@ class RemoteScriptRunner
 
             $remotePath = '/var/init-scripts/metator/'.$site['site_id'];
             $remoteCommand = sprintf(
-                'set -eu; sudo rm -rf %s; sudo install -d -m 755 %s; sudo tar -xzf %s -C %s; sudo rm -f %s; sudo env METATOR_OPERATION=%s CLIENT_PUBLIC_KEY=%s bash %s/server-bootstrap.sh',
+                'set -eu; sudo rm -rf %s; sudo install -d -m 755 %s; sudo tar -xzf %s -C %s; sudo rm -f %s; sudo env METATOR_OPERATION=%s bash %s/server-bootstrap.sh',
                 ...array_map('escapeshellarg', [
                     $remotePath,
                     $remotePath,
@@ -57,7 +60,6 @@ class RemoteScriptRunner
                     $remotePath,
                     $remoteArchive,
                     $operation,
-                    $this->clientPublicKey(),
                     $remotePath,
                 ]),
             );
@@ -89,6 +91,12 @@ class RemoteScriptRunner
         }
 
         throw new RuntimeException('No valid local public SSH key found in ~/.ssh.');
+    }
+
+    private function writeClientPublicKey(string $staging): void
+    {
+        $this->files->put($staging.'/.client-public-key', $this->clientPublicKey().PHP_EOL);
+        @chmod($staging.'/.client-public-key', 0600);
     }
 
     /** @param array<string, mixed> $site */

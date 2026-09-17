@@ -25,6 +25,11 @@ fi
 
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/common.sh"
+if [[ -f "$SCRIPT_DIR/.client-public-key" ]]; then
+    CLIENT_PUBLIC_KEY="$(<"$SCRIPT_DIR/.client-public-key")"
+    rm -f "$SCRIPT_DIR/.client-public-key"
+    export CLIENT_PUBLIC_KEY
+fi
 if [[ -f "$SCRIPT_DIR/.cloudflare.env" ]]; then
     # The local runner transfers this short-lived file only for the selected DNS capability.
     # shellcheck disable=SC1091
