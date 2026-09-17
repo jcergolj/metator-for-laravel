@@ -27,6 +27,8 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$prerequisites_text" == *'add-apt-repository -y ppa:ondrej/php'* ]]
 [[ "$prerequisites_text" == *'add-apt-repository is required'* ]]
 [[ "$prerequisites_text" == *'Composer installation did not provide the composer command'* ]]
+[[ "$prerequisites_text" == *'Caddy installation did not provide the caddy command'* ]]
+[[ "$prerequisites_text" == *'systemctl enable --now caddy'* ]]
 [[ "$common_text" == *"\"\$METATOR_OPERATION\" == prepare-server"* ]]
 [[ "$common_text" == *"skip_step \"\$title\""* ]]
 
