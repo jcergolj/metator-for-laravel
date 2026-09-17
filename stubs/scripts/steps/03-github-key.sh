@@ -6,8 +6,38 @@
 # @default: true
 # @order: 30
 
+ensure_github_host_key() {
+    local known_hosts="/home/${DEPLOY_USER}/.ssh/known_hosts"
+    local expected='github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl'
+    local scanned
+
+    scanned="$(sudo -u "$DEPLOY_USER" ssh-keyscan -t ed25519 github.com 2>/dev/null)"
+    if [[ "$scanned" != "$expected" ]]; then
+        die 'GitHub SSH host key did not match the pinned GitHub fingerprint'
+        return 1
+    fi
+    if sudo test -f "$known_hosts" &&
+        sudo grep -qE '^github\.com[[:space:]]' "$known_hosts" &&
+        ! sudo grep -qxF "$expected" "$known_hosts"; then
+        die "Conflicting github.com host key in $known_hosts"
+        return 1
+    fi
+    if ! sudo test -f "$known_hosts" || ! sudo grep -qxF "$expected" "$known_hosts"; then
+        printf '%s\n' "$expected" | sudo tee -a "$known_hosts" >/dev/null || return 1
+    fi
+    sudo chmod 600 "$known_hosts"
+    sudo chown "$DEPLOY_USER:$DEPLOY_USER" "$known_hosts"
+}
+
+show_github_registration_guidance() {
+    warn "Add this read-only deploy key to the ${GITHUB_REPOSITORY} GitHub repository:"
+    printf 'Deploy-key settings: https://github.com/%s/settings/keys\n' "$GITHUB_REPOSITORY"
+    sudo -u "$DEPLOY_USER" cat "${GITHUB_KEY}.pub"
+}
+
 step_github_key() {
     sudo install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "/home/${DEPLOY_USER}/.ssh" || return 1
+    ensure_github_host_key || return 1
     local ssh_config="/home/${DEPLOY_USER}/.ssh/config"
     local temporary existing merged
     temporary="$(mktemp)" || return 1
@@ -54,9 +84,11 @@ step_github_key() {
                 rm -f "$temporary" "$existing"
                 return 1
             }
-        warn "Add this app-specific key to the ${GITHUB_REPOSITORY} GitHub repository before continuing:"
-        sudo -u "$DEPLOY_USER" cat "${GITHUB_KEY}.pub"
+        show_github_registration_guidance
         read -r -p 'Press Enter after adding the key to GitHub: '
+    elif ! sudo test -f "${GITHUB_KEY}.pub"; then
+        die "Private key exists without its public key: ${GITHUB_KEY}.pub"
+        return 1
     fi
     # Specific hosts precede wildcard defaults; retain global options above them.
     cat > "$temporary" <<EOF
@@ -101,6 +133,7 @@ EOF
     sudo chown "$DEPLOY_USER:$DEPLOY_USER" "$ssh_config" "$GITHUB_KEY"
 
     if ! sudo -u "$DEPLOY_USER" git ls-remote "$GITHUB_URL" HEAD >/dev/null; then
+        show_github_registration_guidance
         die 'GitHub access failed'
         return 1
     fi

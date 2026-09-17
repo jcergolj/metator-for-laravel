@@ -11,6 +11,7 @@ command_text="$(<"$COMMAND_FILE")"
 [[ "$command_text" == *"suggestedSiteId"* ]]
 [[ "$command_text" == *"default: \$suggestedSiteId"* ]]
 [[ "$command_text" == *"'__DEPLOY_PATH__' => '/var/www/'.\$siteId"* ]]
+[[ "$command_text" == *"'__GIT_DEPLOYER_NAME__' => 'git-'.\$siteId"* ]]
 [[ "$command_text" == *"php_version"* ]]
 [[ "$command_text" == *"'database' =>"* ]]
 [[ "$command_text" == *"'redis' =>"* ]]

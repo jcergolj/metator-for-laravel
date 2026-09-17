@@ -49,7 +49,7 @@ prepare_shared_baseline() {
 
     require_commands apt-get apt-cache || return 1
     sudo apt-get update || return 1
-    sudo apt-get install -y ca-certificates composer git curl unzip software-properties-common caddy || return 1
+    sudo apt-get install -y ca-certificates composer git curl unzip openssh-client software-properties-common caddy || return 1
 
     if ! apt-cache show "php${PHP_VERSION}-fpm" >/dev/null 2>&1; then
         sudo add-apt-repository -y ppa:ondrej/php || return 1

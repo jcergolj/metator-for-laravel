@@ -23,6 +23,7 @@ sandbox_sudo() {
     done
     case "$executable" in
         chmod|chown|apt-get|git) return 0 ;;
+        ssh-keyscan) printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n'; return 0 ;;
         ssh-keygen) printf 'Unexpected key generation\n' >&2; return 1 ;;
         install)
             set -- "${arguments[@]}"
@@ -69,7 +70,11 @@ original="$(<"$ssh_dir/config")"
 step_github_key </dev/null
 [[ "$(<"$ssh_dir/config")" == *"$original"* ]]
 [[ "$(<"$ssh_dir/$GITHUB_ALIAS")" == existing-private-key ]]
+grep -qx 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' "$ssh_dir/known_hosts"
 first="$(<"$ssh_dir/config")"
+printf 'github.com ssh-ed25519 conflicting-key\n' > "$ssh_dir/known_hosts"
+if step_github_key </dev/null; then exit 1; fi
+printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n' > "$ssh_dir/known_hosts"
 step_github_key </dev/null
 [[ "$(<"$ssh_dir/config")" == "$first" ]]
 GITHUB_REPOSITORY=acme/unrelated
