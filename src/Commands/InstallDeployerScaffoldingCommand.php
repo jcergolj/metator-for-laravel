@@ -150,7 +150,7 @@ class InstallDeployerScaffoldingCommand extends Command
                 label: __('Production domain'),
                 required: true,
                 validate: function (string $value): ?string {
-                    return preg_match('/^[A-Za-z0-9.-]+$/', $value) !== 1
+                    return preg_match('/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/', $value) !== 1
                         ? __('Enter a valid domain.')
                         : null;
                 },

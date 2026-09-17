@@ -11,8 +11,6 @@ GITHUB_KEY=''
 GITHUB_ALIAS='__GIT_DEPLOYER_NAME__'
 GITHUB_URL=''
 GITHUB_CONFIG_MARKER=''
-CADDY_CERT="/etc/caddy/certs/cloudflare-wildcard.crt"
-CADDY_KEY="/etc/caddy/certs/cloudflare-wildcard.key"
 
 step_number=0
 STEP_SUCCESSFUL=()
@@ -271,7 +269,8 @@ require_safe_inputs() {
             die 'Git SSH deployer name collides with a reserved SSH filename'
             return 1 ;;
     esac
-    [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]] || { die 'Invalid domain'; return 1; }
+    [[ "$DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$ ]] ||
+        { die 'Invalid domain'; return 1; }
     [[ "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
         die 'Invalid server IPv4 address'
 }
@@ -431,6 +430,13 @@ record_site_scheduler() {
     if ! sudo grep -q '^scheduler_file=' "$metadata_file"; then
         printf '%s\n' "scheduler_file=$scheduler_file" |
             sudo tee -a "$metadata_file" >/dev/null || return 1
+    fi
+}
+
+record_site_domain() {
+    local metadata_file="$APP_FOLDER/.metator-site"
+    if ! sudo grep -q '^domain=' "$metadata_file"; then
+        printf '%s\n' "domain=$DOMAIN" | sudo tee -a "$metadata_file" >/dev/null || return 1
     fi
 }
 
