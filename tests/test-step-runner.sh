@@ -65,4 +65,35 @@ STEP_SKIPPED=('STEP 2 - Optional step')
 print_step_summary >"$output_file"
 [[ "$(<"$output_file")" == *'Skipped:'* ]]
 
+# Preparation executes its baseline and optional Node capability only.
+cat > "$TEST_DIR/steps/01-prerequisites.sh" <<'EOF'
+# @id: prerequisites
+# @title: Baseline
+# @required: true
+# @order: 1
+EOF
+cat > "$TEST_DIR/steps/02-node.sh" <<'EOF'
+# @id: node
+# @title: Node
+# @required: false
+# @order: 2
+EOF
+step_prerequisites() { printf 'baseline-ran\n'; }
+step_node() { printf 'node-ran\n'; }
+STEP_FAILED=()
+STEP_SUCCESSFUL=()
+STEP_SKIPPED=()
+run_selected_steps >"$output_file"
+[[ "$(<"$output_file")" == *baseline-ran* ]]
+[[ "$(<"$output_file")" == *node-ran* ]]
+[[ "$(<"$output_file")" != *Skipped:* ]]
+[[ "${#STEP_SUCCESSFUL[@]}" == 2 ]]
+
+step_registration() { return 75; }
+status=0
+run_step 'GitHub registration' 'Register key' step_registration >"$output_file" || status=$?
+[[ "$status" == 75 ]]
+[[ "${#STEP_FAILED[@]}" == 0 ]]
+[[ "$(<"$output_file")" == *'Waiting for local confirmation'* ]]
+
 printf '%s\n' 'Step runner checks passed.'

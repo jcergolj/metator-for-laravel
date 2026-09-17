@@ -32,7 +32,7 @@ USE_HORIZON=false
 USE_REDIS=false
 REDIS_CAPABILITY=none
 CONFIGURE_DEPLOY_USER_LOGIN=false
-CLIENT_PUBLIC_KEY=''
+CLIENT_PUBLIC_KEY="${CLIENT_PUBLIC_KEY:-}"
 ENV_FILE_CREATED=false
 ENV_UPDATED=false
 REDIS_CONFIG_READY=false
@@ -152,6 +152,10 @@ run_step() {
         STEP_SUCCESSFUL+=("STEP ${step_number} - ${title}")
         return
     fi
+    if [[ "$status" -eq 75 ]]; then
+        warn "Waiting for local confirmation: $title"
+        return "$status"
+    fi
     STEP_FAILED+=("STEP ${step_number} - ${title} (exit status ${status})")
     warn "Step failed: $title"
     return "$status"
@@ -237,9 +241,11 @@ run_selected_steps() {
     done
 
     while IFS='|' read -r order step_file title required function_name; do
-        if [[ "$METATOR_OPERATION" == prepare-server && "$(step_metadata "$step_file" id)" != prerequisites ]]; then
-            skip_step "$title"
-            continue
+        if [[ "$METATOR_OPERATION" == prepare-server ]]; then
+            case "$(step_metadata "$step_file" id)" in
+                prerequisites|node) ;;
+                *) continue ;;
+            esac
         fi
         if run_step "$title" "Runs ${title}." "$function_name"; then
             status=0

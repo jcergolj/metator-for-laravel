@@ -68,12 +68,12 @@ EOF
     fi
     sudo install -m 644 -o root -g root "$temporary" "$SUPERVISOR_FILE"
     rm -f "$temporary"
-    # reread validates through the running daemon without activating worker changes.
-    # Supervisor can report an RPC validation ERROR while exiting successfully.
-    local validation_output validation_status=0
-    validation_output="$(sudo supervisorctl -c /etc/supervisor/supervisord.conf reread 2>&1)" || validation_status=$?
-    printf '%s\n' "$validation_output"
-    if [[ "$validation_status" -ne 0 || "$validation_output" == *ERROR* ]]; then
+    local validation_output
+    # reread parses configuration through the running daemon without updating
+    # process groups or starting a second supervisord instance.
+    if ! validation_output="$(sudo supervisorctl -c /etc/supervisor/supervisord.conf reread 2>&1)" ||
+        [[ "$validation_output" == *ERROR* ]]; then
+        printf '%s\n' "$validation_output" >&2
         if [[ -n "$backup" ]]; then
             sudo cp -p "$backup" "$SUPERVISOR_FILE"
         else

@@ -29,14 +29,30 @@ class RunRemoteProvisioningCommand extends Command
     {
         try {
             $site = $this->loadSite();
-            $status = $this->runner->run(
-                $site,
-                $operation,
-                $this->laravel->basePath('scripts'),
-                function (string $chunk, bool $error): void {
-                    $this->{$error ? 'error' : 'line'}(rtrim($chunk, "\r\n"));
-                },
-            );
+            do {
+                $status = $this->runner->run(
+                    $site,
+                    $operation,
+                    $this->laravel->basePath('scripts'),
+                    function (string $chunk, bool $error): void {
+                        $this->{$error ? 'error' : 'line'}(rtrim($chunk, "\r\n"));
+                    },
+                );
+                if ($operation !== 'provision' || $status !== RemoteScriptRunner::GITHUB_KEY_REGISTRATION_REQUIRED) {
+                    break;
+                }
+                if (! $this->input->isInteractive()) {
+                    $this->error('Add the displayed read-only deploy key to GitHub, then rerun metator:provision.');
+
+                    return self::FAILURE;
+                }
+                if (! $this->confirm('Add the displayed read-only deploy key to GitHub. Ready to verify access and continue?')) {
+                    $this->warn('Provisioning paused. Rerun metator:provision after registering the key.');
+
+                    return self::FAILURE;
+                }
+                $this->info('Retrying provisioning and verifying GitHub access...');
+            } while (true);
         } catch (RuntimeException $exception) {
             $this->error($exception->getMessage());
 

@@ -12,7 +12,10 @@ esac
 # All applications modify the same SSH config, crontab, and Caddyfile.
 # Keep the lock for the complete bootstrap, including interactive reviews.
 if [[ "$EUID" -ne 0 ]]; then
-    exec sudo env METATOR_OPERATION="$METATOR_OPERATION" bash "$SCRIPT_DIR/server-bootstrap.sh" "$@"
+    exec sudo env \
+        METATOR_OPERATION="$METATOR_OPERATION" \
+        CLIENT_PUBLIC_KEY="${CLIENT_PUBLIC_KEY:-}" \
+        bash "$SCRIPT_DIR/server-bootstrap.sh" "$@"
 fi
 exec 9>/var/lock/metator-bootstrap.lock
 if ! flock -n 9; then
@@ -22,6 +25,11 @@ fi
 
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/common.sh"
+if [[ -f "$SCRIPT_DIR/.client-public-key" ]]; then
+    CLIENT_PUBLIC_KEY="$(<"$SCRIPT_DIR/.client-public-key")"
+    rm -f "$SCRIPT_DIR/.client-public-key"
+    export CLIENT_PUBLIC_KEY
+fi
 if [[ -f "$SCRIPT_DIR/.cloudflare.env" ]]; then
     # The local runner transfers this short-lived file only for the selected DNS capability.
     # shellcheck disable=SC1091
@@ -47,7 +55,7 @@ DATABASE_DRIVER='__DATABASE_DRIVER__'
 ENV_EXAMPLE_FILE="$SCRIPT_DIR/.env.example"
 
 PHP_VERSION='__PHP_VERSION__'
-if [[ "$PHP_VERSION" == __PHP_VERSION__ ]]; then
+if [[ "$PHP_VERSION" == __PHP_"VERSION__" ]]; then
     PHP_VERSION="$(systemctl list-unit-files --type=service --no-legend 2>/dev/null |
         sed -nE 's/^(php([0-9]+\.[0-9]+)-fpm)\.service.*/\2/p' | sort -V | tail -n 1)"
 fi
@@ -65,6 +73,7 @@ PHP_PACKAGE_PREFIX="php${PHP_VERSION}"
 require_safe_inputs
 
 if [[ "$METATOR_OPERATION" == update-environment ]]; then
+    export APP_FOLDER SITE_ID
     exec bash "$SCRIPT_DIR/environment-update.sh"
 fi
 
@@ -98,10 +107,15 @@ for step_file in "$SCRIPT_DIR"/steps/*.sh; do
 done
 validate_step_functions || exit 1
 
-prepare_deploy_user || exit 1
-claim_application_folder || exit 1
+if [[ "$METATOR_OPERATION" == provision ]]; then
+    prepare_deploy_user || exit 1
+    claim_application_folder || exit 1
+fi
 bootstrap_status=0
 run_selected_steps || bootstrap_status=$?
+if [[ "$bootstrap_status" -eq 75 ]]; then
+    exit "$bootstrap_status"
+fi
 print_step_summary
 
 if [[ "$bootstrap_status" -ne 0 ]]; then
@@ -112,5 +126,5 @@ echo
 ok 'Server setup finished'
 if [[ "$METATOR_OPERATION" == prepare-server ]]; then
     echo 'Next step: provision the selected site with:'
-    echo '  php artisan metator:provision --config=metator.production.php'
+    echo '  php artisan metator:provision --config=__CONFIG_FILE__'
 fi

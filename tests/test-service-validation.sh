@@ -12,7 +12,7 @@ die() { printf '%s\n' "$*" >&2; }
 ok() { :; }
 record_site_domain() { :; }
 require_commands() { :; }
-supervisorctl() { :; }
+# supervisorctl is invoked through the mocked sudo wrapper below.
 
 sudo() {
     local executable="$1" argument
