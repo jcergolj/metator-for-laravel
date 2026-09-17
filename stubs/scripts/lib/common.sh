@@ -424,6 +424,15 @@ record_redis_allocation() {
     fi
 }
 
+record_site_scheduler() {
+    local metadata_file="$APP_FOLDER/.metator-site"
+    local scheduler_file="${SCHEDULER_FILE:-/etc/cron.d/metator-${SITE_ID}}"
+    if ! sudo grep -q '^scheduler_file=' "$metadata_file"; then
+        printf '%s\n' "scheduler_file=$scheduler_file" |
+            sudo tee -a "$metadata_file" >/dev/null || return 1
+    fi
+}
+
 ensure_redis_config() {
     if [[ "$REDIS_CONFIG_READY" == true ]]; then
         return

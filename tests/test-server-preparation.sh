@@ -20,6 +20,8 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$prerequisites_text" == *'redis-server'* ]]
 [[ "$prerequisites_text" == *"php\${PHP_VERSION}-redis"* ]]
 [[ "$prerequisites_text" == *'Redis is not active'* ]]
+[[ "$prerequisites_text" == *'cron is active'* || "$prerequisites_text" == *'Cron is not active'* ]]
+[[ "$prerequisites_text" == *'shared_packages+=(cron)'* ]]
 [[ "$prerequisites_text" == *'add-apt-repository -y ppa:ondrej/php'* ]]
 [[ "$common_text" == *"\"\$METATOR_OPERATION\" == prepare-server"* ]]
 [[ "$common_text" == *"skip_step \"\$title\""* ]]
