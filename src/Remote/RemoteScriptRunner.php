@@ -49,7 +49,7 @@ class RemoteScriptRunner
 
             $remotePath = '/var/init-scripts/metator/'.$site['site_id'];
             $remoteCommand = sprintf(
-                'set -eu; sudo rm -rf %s; sudo install -d -m 755 %s; sudo tar -xzf %s -C %s; sudo rm -f %s; sudo env METATOR_OPERATION=%s bash %s/server-bootstrap.sh',
+                'set -eu; sudo rm -rf %s; sudo install -d -m 755 %s; sudo tar -xzf %s -C %s; sudo rm -f %s; sudo env METATOR_OPERATION=%s CLIENT_PUBLIC_KEY=%s bash %s/server-bootstrap.sh',
                 ...array_map('escapeshellarg', [
                     $remotePath,
                     $remotePath,
@@ -57,6 +57,7 @@ class RemoteScriptRunner
                     $remotePath,
                     $remoteArchive,
                     $operation,
+                    $this->clientPublicKey(),
                     $remotePath,
                 ]),
             );
@@ -71,6 +72,21 @@ class RemoteScriptRunner
                 $this->files->deleteDirectory($staging);
             }
         }
+    }
+
+    private function clientPublicKey(): string
+    {
+        $home = getenv('HOME') ?: '';
+        foreach ([$home.'/.ssh/id_ed25519.pub', $home.'/.ssh/id_ecdsa.pub', $home.'/.ssh/id_rsa.pub'] as $path) {
+            if (is_file($path)) {
+                $key = trim((string) file_get_contents($path));
+                if (preg_match('/^(ssh-ed25519|ssh-rsa|ecdsa-sha2-[^ ]+)[[:space:]]+[^[:space:]]+/', $key) === 1) {
+                    return $key;
+                }
+            }
+        }
+
+        throw new RuntimeException('No valid local public SSH key found in ~/.ssh.');
     }
 
     /** @param array<string, mixed> $site */
