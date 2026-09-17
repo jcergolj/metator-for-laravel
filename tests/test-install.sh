@@ -53,5 +53,6 @@ permissions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/06-permissions.sh")"
 [[ "$(<"$ROOT_DIR/stubs/scripts/steps/01-prerequisites.sh")" != *'php composer caddy git'* ]]
 [[ "$(<"$ROOT_DIR/stubs/scripts/steps/01-prerequisites.sh")" == *'require_commands curl jq'* ]]
 [[ "$common_stub" == *'prepare_deploy_user'* ]]
+[[ "$(<"$ROOT_DIR/stubs/scripts/server-bootstrap.sh")" == *"PHP_VERSION='__PHP_VERSION__'"* ]]
 
 printf '%s\n' 'Install prompt checks passed.'
