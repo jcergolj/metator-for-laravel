@@ -35,6 +35,8 @@ USE_CLOUDFLARE='__USE_CLOUDFLARE__'
 USE_SCHEDULER='__USE_SCHEDULER__'
 USE_QUEUE='__USE_QUEUE__'
 USE_HORIZON='__USE_HORIZON__'
+USE_REDIS='__USE_REDIS__'
+REDIS_CAPABILITY='__REDIS_CAPABILITY__'
 DATABASE_DRIVER='__DATABASE_DRIVER__'
 ENV_EXAMPLE_FILE="$SCRIPT_DIR/.env.example"
 
@@ -57,6 +59,7 @@ APP_NAME="$SITE_ID"
 configure_github_identity
 CADDY_SITE="/etc/caddy/sites-enabled/${APP_NAME}.caddy"
 SUPERVISOR_FILE="/etc/supervisor/conf.d/${APP_NAME}-worker.conf"
+REDIS_ALLOCATION_FILE='/var/lib/metator/redis-allocations.tsv'
 
 echo
 echo 'Configuration summary'

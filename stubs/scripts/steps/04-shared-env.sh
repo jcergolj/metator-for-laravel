@@ -31,6 +31,13 @@ step_shared_env() {
         set_env_value CACHE_PREFIX "metator_${APP_NAME}_"
         set_env_value HORIZON_PREFIX "metator_${APP_NAME}_"
     fi
+    if [[ "$USE_REDIS" == true ]]; then
+        ensure_redis_config || return 1
+        set_env_value REDIS_PREFIX "metator_${APP_NAME}_"
+        set_env_value CACHE_PREFIX "metator_${APP_NAME}_"
+        set_env_value HORIZON_PREFIX "metator_${APP_NAME}_"
+        configure_redis_env || return 1
+    fi
     if ! sudo grep -qE '^APP_URL=' "$env_file"; then
         set_env_value APP_URL "https://${DOMAIN}"
     fi
