@@ -14,12 +14,13 @@ command_text="$(<"$COMMAND_FILE")"
 [[ "$command_text" == *"'__GIT_DEPLOYER_NAME__' => 'git-'.\$siteId"* ]]
 [[ "$command_text" == *"php_version"* ]]
 [[ "$command_text" == *"'database' =>"* ]]
+[[ "$command_text" == *"'cloudflare' =>"* ]]
 [[ "$command_text" == *"'redis' =>"* ]]
 [[ "$command_text" == *"'worker' =>"* ]]
 [[ "$command_text" == *"'scheduler' =>"* ]]
 [[ "$command_text" == *"metator."* && "$command_text" == *"configName"* ]]
 [[ "$command_text" == *"var_export"* ]]
 [[ "$command_text" != *"APP_KEY"* ]]
-[[ "$command_text" != *"password"* ]]
+[[ "$command_text" == *"password"* && "$command_text" == *".local.php"* ]]
 
 printf '%s\n' 'Local site configuration checks passed.'

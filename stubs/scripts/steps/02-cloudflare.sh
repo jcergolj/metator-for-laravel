@@ -22,9 +22,9 @@ step_cloudflare() {
         return 1
     fi
 
-    local existing_json result_count response
+    local existing_json response
     existing_json="$(curl -fsS --max-time 10 \
-        "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records?type=A&name=${DOMAIN}&per_page=1" \
+        "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records?name=${DOMAIN}&per_page=100" \
         -H "Authorization: Bearer ${CF_TOKEN}" \
         -H 'Content-Type: application/json')" || {
         die 'Cloudflare DNS lookup failed'
@@ -35,9 +35,13 @@ step_cloudflare() {
         die 'Cloudflare rejected the DNS lookup'
         return 1
     fi
-    result_count="$(echo "$existing_json" | jq '.result | length')"
-    if [[ "$result_count" -gt 0 ]]; then
-        ok "DNS A record for ${DOMAIN} already exists; skipping"
+    if ! echo "$existing_json" | jq -e --arg ip "$SERVER_IP" \
+        '(.result | length == 0) or all(.result[]; .type == "A" and .content == $ip)' >/dev/null; then
+        die "Cloudflare has a conflicting DNS record for ${DOMAIN}"
+        return 1
+    fi
+    if ! echo "$existing_json" | jq -e '.result | length == 0' >/dev/null; then
+        ok "DNS A record for ${DOMAIN} already points to ${SERVER_IP}; skipping"
         return
     fi
 
@@ -46,7 +50,8 @@ step_cloudflare() {
         "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records" \
         -H "Authorization: Bearer ${CF_TOKEN}" \
         -H 'Content-Type: application/json' \
-        --data "{\"type\":\"A\",\"name\":\"${DOMAIN}\",\"content\":\"${SERVER_IP}\",\"proxied\":true}")" || {
+        --data "$(jq -cn --arg name "$DOMAIN" --arg ip "$SERVER_IP" \
+            '{type:"A",name:$name,content:$ip,proxied:true}')")" || {
         die 'Cloudflare DNS record creation failed'
         return 1
     }

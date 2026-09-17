@@ -22,6 +22,12 @@ fi
 
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/common.sh"
+if [[ -f "$SCRIPT_DIR/.cloudflare.env" ]]; then
+    # The local runner transfers this short-lived file only for the selected DNS capability.
+    # shellcheck disable=SC1091
+    source "$SCRIPT_DIR/.cloudflare.env"
+    trap 'rm -f "$SCRIPT_DIR/.cloudflare.env"' EXIT
+fi
 
 require_commands ssh-keyscan systemctl sed sort tail
 

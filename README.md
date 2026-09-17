@@ -107,6 +107,12 @@ pipeline stops at the first failed selected step, reports the failed operation,
 and does not print server readiness. Completed site-owned resources are kept so
 the operator can correct the problem and retry.
 
+Custom steps are trusted operator code. They run with the bootstrap's
+privileges, and their effects on shared resources are the author's
+responsibility. The generated pipeline is uploaded fresh for every remote run;
+removed selections are not executed from stale server files. Built-in ownership,
+permission, database, repository-access, and handoff steps remain mandatory.
+
 After adding a step, run:
 
 ```bash
@@ -164,6 +170,13 @@ Cloudflare DNS is an optional step. Leave **Configure Cloudflare DNS** unchecked
 when installing, and no Cloudflare credentials or DNS API calls will be needed.
 The web server step remains independent, so Caddy or Nginx can be used with or
 without Cloudflare.
+
+When Cloudflare is selected, installation collects the API token and zone ID
+locally and stores them in the untracked `metator.<name>.local.php` companion
+file. The remote runner transfers these credentials only for that operation and
+removes them from the staging directory afterward. Existing records are used
+only when every matching record points to the configured server; conflicts fail
+without changing DNS.
 
 Caddy obtains and renews the site's public HTTPS certificate itself. Before
 provisioning, create DNS records for the configured domain that point to the
