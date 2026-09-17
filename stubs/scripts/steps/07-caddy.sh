@@ -7,13 +7,13 @@
 # @order: 70
 
 step_caddy() {
-    local metadata domain site_id
+    local metadata existing_domain existing_site_id
     for metadata in /var/www/*/.metator-site; do
         sudo test -f "$metadata" || continue
-        domain="$(sudo sed -nE 's/^domain=(.*)$/\1/p' "$metadata" | sed -n '1p')"
-        site_id="$(sudo sed -nE 's/^site_id=(.*)$/\1/p' "$metadata" | sed -n '1p')"
-        if [[ "$domain" == "$DOMAIN" && "$site_id" != "$SITE_ID" ]]; then
-            die "Domain is already assigned to site $site_id: $DOMAIN"
+        existing_domain="$(sudo sed -nE 's/^domain=(.*)$/\1/p' "$metadata" | sed -n '1p')"
+        existing_site_id="$(sudo sed -nE 's/^site_id=(.*)$/\1/p' "$metadata" | sed -n '1p')"
+        if [[ "$existing_domain" == "$DOMAIN" && "$existing_site_id" != "$SITE_ID" ]]; then
+            die "Domain is already assigned to site $existing_site_id: $DOMAIN"
             return 1
         fi
     done
