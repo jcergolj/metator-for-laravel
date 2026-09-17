@@ -208,8 +208,12 @@ confirming the bootstrap prompt.
   selection. Existing unmarked folders and runtime changes are rejected before
   provisioning changes them.
 - New environments get unique Redis/cache/Horizon prefixes. For existing apps
-  sharing Redis, check `REDIS_PREFIX`, `CACHE_PREFIX`, and `HORIZON_PREFIX` are
-  distinct and used by the app's configuration.
+  sharing Redis, Metator assigns separate cache and runtime logical databases,
+  writes `REDIS_DB` and `REDIS_CACHE_DB`, and sets `CACHE_STORE`,
+  `SESSION_DRIVER`, and (for the queues capability) `QUEUE_CONNECTION` to
+  Redis. The application's cache, database, session, and Horizon configuration
+  must consume these standard environment values; Metator does not modify
+  application source configuration.
 
 ## Remote workflow
 

@@ -91,14 +91,18 @@ class InstallDeployerScaffoldingCommand extends Command
             default: 'none',
         );
         $schedulerEnabled = confirm(label: __('Enable the scheduler?'), default: true);
-        if ($workerType === 'horizon' && $redisCapability === 'none') {
-            $this->error('Laravel Horizon requires the Redis capability.');
+        if ($workerType === 'horizon' && $redisCapability !== 'queue') {
+            $this->error('Laravel Horizon requires the Redis queues capability.');
 
             return self::FAILURE;
         }
         $selectedStepIds = array_values(array_filter($selectedStepIds, fn (string $id): bool => $id !== 'workers'));
         if ($workerType !== 'none') {
             $selectedStepIds[] = 'workers';
+        }
+        $selectedStepIds = array_values(array_filter($selectedStepIds, fn (string $id): bool => $id !== 'redis'));
+        if ($redisCapability !== 'none') {
+            $selectedStepIds[] = 'redis';
         }
         $selectedSteps = array_values(array_filter(
             $availableSteps,
@@ -170,6 +174,8 @@ class InstallDeployerScaffoldingCommand extends Command
             '__WORKER_TYPE__' => $workerType,
             '__USE_QUEUE__' => $workerType === 'none' ? 'false' : 'true',
             '__USE_HORIZON__' => $workerType === 'horizon' ? 'true' : 'false',
+            '__USE_REDIS__' => $redisCapability === 'none' ? 'false' : 'true',
+            '__REDIS_CAPABILITY__' => $redisCapability,
         ];
 
         $this->files->put($siteConfiguration, "<?php\n\nreturn ".var_export([

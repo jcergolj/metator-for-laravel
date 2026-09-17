@@ -31,10 +31,17 @@ DATABASE_CONFIG_READY=false
 USE_SCHEDULER=false
 USE_QUEUE=false
 USE_HORIZON=false
+USE_REDIS=false
+REDIS_CAPABILITY=none
 CONFIGURE_DEPLOY_USER_LOGIN=false
 CLIENT_PUBLIC_KEY=''
 ENV_FILE_CREATED=false
 ENV_UPDATED=false
+REDIS_CONFIG_READY=false
+REDIS_CACHE_DB=''
+REDIS_RUNTIME_DB=''
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
 
 configure_github_identity() {
     GITHUB_KEY="/home/${DEPLOY_USER}/.ssh/${GITHUB_ALIAS}"
@@ -406,6 +413,81 @@ record_site_database() {
             "database_user=$MYSQL_USERNAME" \
             "database_host=$MYSQL_HOST" |
             sudo tee -a "$metadata_file" >/dev/null || return 1
+    fi
+}
+
+record_redis_allocation() {
+    local metadata_file="$APP_FOLDER/.metator-site"
+    if ! sudo grep -q '^redis_cache_db=' "$metadata_file"; then
+        printf '%s\n' "redis_cache_db=$REDIS_CACHE_DB" "redis_runtime_db=$REDIS_RUNTIME_DB" |
+            sudo tee -a "$metadata_file" >/dev/null || return 1
+    fi
+}
+
+ensure_redis_config() {
+    if [[ "$REDIS_CONFIG_READY" == true ]]; then
+        return
+    fi
+    [[ "$USE_REDIS" == true ]] || { REDIS_CONFIG_READY=true; return; }
+
+    local metadata_cache metadata_runtime reservation allocated cache_db runtime_db databases dbsize
+    metadata_cache="$(site_metadata_value redis_cache_db)"
+    metadata_runtime="$(site_metadata_value redis_runtime_db)"
+    if [[ -n "$metadata_cache" || -n "$metadata_runtime" ]]; then
+        [[ "$metadata_cache" =~ ^[0-9]+$ && "$metadata_runtime" =~ ^[0-9]+$ &&
+            "$metadata_cache" != "$metadata_runtime" ]] || {
+            die 'Redis allocation metadata is invalid'
+            return 1
+        }
+        REDIS_CACHE_DB="$metadata_cache"
+        REDIS_RUNTIME_DB="$metadata_runtime"
+    else
+        databases="$(sudo redis-cli --raw CONFIG GET databases | sed -n '2p')" || return 1
+        [[ "$databases" =~ ^[1-9][0-9]*$ ]] || { die 'Redis returned an invalid database capacity'; return 1; }
+        sudo install -d -m 2775 -o root -g www-data "$(dirname "$REDIS_ALLOCATION_FILE")" || return 1
+        sudo touch "$REDIS_ALLOCATION_FILE" || return 1
+        reservation="$(sudo sed -nE "s/^${SITE_ID}\|([0-9]+)\|([0-9]+)$/\1 \2/p" "$REDIS_ALLOCATION_FILE" | sed -n '1p')"
+        if [[ "$reservation" =~ ^([0-9]+)[[:space:]]+([0-9]+)$ && "${BASH_REMATCH[1]}" != "${BASH_REMATCH[2]}" ]]; then
+            REDIS_CACHE_DB="${BASH_REMATCH[1]}"
+            REDIS_RUNTIME_DB="${BASH_REMATCH[2]}"
+            record_redis_allocation || return 1
+            REDIS_CONFIG_READY=true
+            return
+        fi
+        allocated="$(sudo sed -nE 's/^[^|]+\|([0-9]+)\|([0-9]+)$/\1 \2/p' "$REDIS_ALLOCATION_FILE")"
+        for ((cache_db=1; cache_db<databases; cache_db++)); do
+            [[ " $allocated " != *" $cache_db "* ]] || continue
+            dbsize="$(sudo redis-cli -n "$cache_db" DBSIZE)" || return 1
+            [[ "$dbsize" == 0 ]] || continue
+            for ((runtime_db=cache_db+1; runtime_db<databases; runtime_db++)); do
+                [[ " $allocated " != *" $runtime_db "* ]] || continue
+                dbsize="$(sudo redis-cli -n "$runtime_db" DBSIZE)" || return 1
+                [[ "$dbsize" == 0 ]] || continue
+                REDIS_CACHE_DB="$cache_db"
+                REDIS_RUNTIME_DB="$runtime_db"
+                printf '%s|%s|%s\n' "$SITE_ID" "$cache_db" "$runtime_db" |
+                    sudo tee -a "$REDIS_ALLOCATION_FILE" >/dev/null || return 1
+                break 2
+            done
+        done
+        if [[ -z "$REDIS_CACHE_DB" ]]; then
+            die 'Redis has no two unreserved empty logical databases; run explicit server preparation'
+            return 1
+        fi
+    fi
+    record_redis_allocation || return 1
+    REDIS_CONFIG_READY=true
+}
+
+configure_redis_env() {
+    set_env_value REDIS_HOST "$REDIS_HOST"
+    set_env_value REDIS_PORT "$REDIS_PORT"
+    set_env_value REDIS_DB "$REDIS_RUNTIME_DB"
+    set_env_value REDIS_CACHE_DB "$REDIS_CACHE_DB"
+    set_env_value CACHE_STORE redis
+    set_env_value SESSION_DRIVER redis
+    if [[ "$REDIS_CAPABILITY" == queue ]]; then
+        set_env_value QUEUE_CONNECTION redis
     fi
 }
 

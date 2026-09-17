@@ -25,6 +25,13 @@ step_prerequisites() {
             return 1
         }
     fi
+    if [[ "$USE_REDIS" == true ]]; then
+        require_commands redis-cli || return 1
+        sudo systemctl is-active --quiet redis-server || {
+            die 'Redis is not active'
+            return 1
+        }
+    fi
 
     prepare_deploy_user
     local step_file step_id
@@ -58,7 +65,10 @@ prepare_shared_baseline() {
     sudo apt-get update || return 1
     local shared_packages=(ca-certificates composer git curl unzip openssh-client software-properties-common caddy)
     if [[ "$DATABASE_DRIVER" == mysql ]]; then
-        shared_packages+=(mariadb-server "php${PHP_VERSION}-mysql")
+        shared_packages+=(mariadb-server)
+    fi
+    if [[ "$USE_REDIS" == true ]]; then
+        shared_packages+=(redis-server)
     fi
     sudo apt-get install -y "${shared_packages[@]}" || return 1
 
@@ -66,15 +76,26 @@ prepare_shared_baseline() {
         sudo add-apt-repository -y ppa:ondrej/php || return 1
         sudo apt-get update || return 1
     fi
-    sudo apt-get install -y \
-        "php${PHP_VERSION}-cli" "php${PHP_VERSION}-fpm" \
-        "php${PHP_VERSION}-mbstring" "php${PHP_VERSION}-xml" \
-        "php${PHP_VERSION}-curl" "php${PHP_VERSION}-zip" \
-        "php${PHP_VERSION}-bcmath" "php${PHP_VERSION}-sqlite3" || return 1
+    local php_packages=(
+        "php${PHP_VERSION}-cli" "php${PHP_VERSION}-fpm"
+        "php${PHP_VERSION}-mbstring" "php${PHP_VERSION}-xml"
+        "php${PHP_VERSION}-curl" "php${PHP_VERSION}-zip"
+        "php${PHP_VERSION}-bcmath" "php${PHP_VERSION}-sqlite3"
+    )
+    if [[ "$DATABASE_DRIVER" == mysql ]]; then
+        php_packages+=("php${PHP_VERSION}-mysql")
+    fi
+    if [[ "$USE_REDIS" == true ]]; then
+        php_packages+=("php${PHP_VERSION}-redis")
+    fi
+    sudo apt-get install -y "${php_packages[@]}" || return 1
 
     sudo systemctl enable --now "php${PHP_VERSION}-fpm" || return 1
     if [[ "$DATABASE_DRIVER" == mysql ]]; then
         sudo systemctl enable --now mariadb || return 1
+    fi
+    if [[ "$USE_REDIS" == true ]]; then
+        sudo systemctl enable --now redis-server || return 1
     fi
     ok "Shared PHP ${PHP_VERSION} baseline is ready"
 }
