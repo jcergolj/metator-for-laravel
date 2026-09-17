@@ -18,6 +18,7 @@ set('branch', '__BRANCH__');
 set('keep_releases', 5);
 set('worker_type', $workerType);
 set('bin/php', $phpBinary);
+set('writable_dirs', ['shared/storage']);
 
 host('production')
     ->setHostname($site['ssh']['host'])
@@ -56,7 +57,7 @@ if ($workerType !== 'none') {
         run('sudo supervisorctl update {{application}}-worker');
     });
 
-    task('deploy:restart-workers', function () {
+    task('deploy:restart-workers', function () use ($workerType) {
         if ($workerType === 'horizon') {
             run('cd {{release_path}} && {{bin/php}} artisan horizon:terminate');
         } elseif ($workerType !== 'queue') {

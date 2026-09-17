@@ -25,6 +25,16 @@ sudo() {
 
 step_permissions >/dev/null
 
+for directory in \
+    shared/storage/framework/cache \
+    shared/storage/framework/data \
+    shared/storage/framework/sessions \
+    shared/storage/framework/views \
+    shared/storage/logs \
+    shared/bootstrap/cache; do
+    [[ -d "$TEST_DIR/$directory" ]]
+done
+
 assert_mode() {
     local expected="$1" path="$2" actual
     actual="$(stat -c '%a' "$path")"
