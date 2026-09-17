@@ -5,21 +5,24 @@ namespace Deployer;
 require 'recipe/laravel.php';
 require 'contrib/php-fpm.php';
 
-set('application', '__APP_NAME__');
+$site = require __DIR__.'/__CONFIG_FILE__';
+$siteId = $site['site_id'];
+$deployPath = '/var/www/'.$siteId;
+$phpBinary = '/usr/bin/php'.$site['php_version'];
+$workerType = $site['worker'] ?? 'none';
 
-set(
-    'repository',
-    'git@__GIT_DEPLOYER_NAME__:__GITHUB_REPOSITORY__.git'
-);
+set('application', $siteId);
+set('repository', 'git-'.$siteId.':'.$site['repository'].'.git');
 
 set('branch', '__BRANCH__');
 set('keep_releases', 5);
-set('worker_type', '__WORKER_TYPE__');
+set('worker_type', $workerType);
+set('bin/php', $phpBinary);
 
 host('production')
-    ->setHostname('__SERVER_IP__')
-    ->setRemoteUser('deployer')
-    ->setDeployPath('__DEPLOY_PATH__');
+    ->setHostname($site['ssh']['host'])
+    ->setRemoteUser($site['deploy_user'] ?? 'deployer')
+    ->setDeployPath($deployPath);
 
 /*
  * Server services are configured by scripts/server-bootstrap.sh:
@@ -27,9 +30,20 @@ host('production')
  * - Supervisor: either queue:work or Horizon
  */
 
-add('shared_files', [
-    'database/database.sqlite',
-]);
+if (($site['database'] ?? 'sqlite') === 'sqlite') {
+    add('shared_files', ['database/database.sqlite']);
+}
+
+task('metator:verify-runtime', function () use ($deployPath, $phpBinary, $site) {
+    $metadata = escapeshellarg($deployPath.'/.metator-site');
+    $expectedVersion = escapeshellarg($site['php_version']);
+    $expectedBinary = escapeshellarg($phpBinary);
+    $versionExpression = escapeshellarg('echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;');
+    run("test \"\$(sed -nE 's/^php_version=(.*)$/\\1/p' {$metadata})\" = {$expectedVersion}");
+    run("test \"\$({$expectedBinary} -r {$versionExpression})\" = {$expectedVersion}");
+});
+
+before('deploy:prepare', 'metator:verify-runtime');
 
 task('deploy:cache', function () {
     run('cd {{release_path}} && {{bin/php}} artisan optimize');
@@ -37,16 +51,16 @@ task('deploy:cache', function () {
 
 after('artisan:migrate', 'deploy:cache');
 
-if ('__WORKER_TYPE__' !== 'none') {
+if ($workerType !== 'none') {
     task('deploy:activate-workers', function () {
         run('sudo supervisorctl reread');
         run('sudo supervisorctl update');
     });
 
     task('deploy:restart-workers', function () {
-        if (get('worker_type') === 'horizon') {
+        if ($workerType === 'horizon') {
             run('cd {{release_path}} && {{bin/php}} artisan horizon:terminate');
-        } elseif (get('worker_type') === 'queue') {
+        } elseif ($workerType === 'queue') {
             run('cd {{release_path}} && {{bin/php}} artisan queue:restart');
         } else {
             throw new \RuntimeException('WORKER_TYPE must be either horizon or queue');

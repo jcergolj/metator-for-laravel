@@ -29,5 +29,6 @@ readme_text="$(<"$ROOT_DIR/README.md")"
 [[ "$bootstrap_text" == *"METATOR_OPERATION"* ]]
 [[ "$readme_text" == *'metator:prepare-server --config=metator.production.php'* ]]
 [[ "$readme_text" == *'Provisioning does not run Deployer'* ]]
+[[ "$readme_text" == *'metator:provision --config=metator.production.php'* ]]
 
 printf '%s\n' 'Remote workflow checks passed.'
