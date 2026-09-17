@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;
+use function Laravel\Prompts\password;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
 
@@ -54,6 +55,7 @@ class InstallDeployerScaffoldingCommand extends Command
                 : __('Use 1-24 lowercase letters or digits, with single hyphens between segments.'),
         );
         $siteConfiguration = $basePath.'/metator.'.$configName.'.php';
+        $secretConfiguration = $basePath.'/metator.'.$configName.'.local.php';
         if ($this->files->exists($siteConfiguration) && ! $this->option('force')) {
             $this->error("Site configuration already exists: {$siteConfiguration}. Use --force to replace it.");
 
@@ -110,6 +112,20 @@ class InstallDeployerScaffoldingCommand extends Command
         ));
 
         $this->validateSelectedSteps($availableSteps, $selectedSteps);
+
+        $cloudflareSecrets = null;
+        if (in_array('cloudflare', $selectedStepIds, true)) {
+            $cloudflareSecrets = [
+                'token' => password(label: __('Cloudflare API token'), required: true),
+                'zone_id' => text(
+                    label: __('Cloudflare zone ID'),
+                    required: true,
+                    validate: fn (string $value): ?string => preg_match('/^[A-Za-z0-9]+$/', $value) === 1
+                        ? null
+                        : __('Enter a valid Cloudflare zone ID.'),
+                ),
+            ];
+        }
 
         $placeholders = [
             '__APP_NAME__' => $project,
@@ -188,10 +204,18 @@ class InstallDeployerScaffoldingCommand extends Command
             'repository' => $placeholders['__GITHUB_REPOSITORY__'],
             'php_version' => $placeholders['__PHP_VERSION__'],
             'database' => $placeholders['__DATABASE_DRIVER__'] === 'mysql' ? 'mariadb' : 'sqlite',
+            'cloudflare' => in_array('cloudflare', $selectedStepIds, true),
             'redis' => $redisCapability,
             'worker' => $workerType,
             'scheduler' => $schedulerEnabled,
         ], true).";\n");
+        if ($cloudflareSecrets !== null) {
+            $this->files->put($secretConfiguration, "<?php\n\nreturn ".var_export(['cloudflare' => $cloudflareSecrets], true).";\n");
+            @chmod($secretConfiguration, 0600);
+            $this->warn("Cloudflare credentials stored locally in {$secretConfiguration}; keep this file out of version control.");
+        } elseif ($this->option('force') && $this->files->exists($secretConfiguration)) {
+            $this->files->delete($secretConfiguration);
+        }
         $this->info("Configured site: {$siteConfiguration}");
 
         $targets = [
@@ -307,8 +331,10 @@ class InstallDeployerScaffoldingCommand extends Command
 
     protected function validateSelectedSteps(array $availableSteps, array $selectedSteps): void
     {
+        $mandatory = ['prerequisites', 'shared-env', 'database', 'github-key', 'permissions', 'deployer-instructions'];
         foreach ($availableSteps as $step) {
-            if ($step['required'] && ! in_array($step['id'], array_column($selectedSteps, 'id'), true)) {
+            if (($step['required'] || in_array($step['id'], $mandatory, true))
+                && ! in_array($step['id'], array_column($selectedSteps, 'id'), true)) {
                 throw new \RuntimeException("Required step is not selected: {$step['id']}.");
             }
         }

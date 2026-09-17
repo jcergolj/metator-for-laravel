@@ -26,11 +26,15 @@ class RemoteScriptRunner
         $staging = null;
         try {
             if ($environmentInput === null) {
-                $this->archiveScripts($scriptsPath, $archive);
+                $staging = $this->stageScripts($scriptsPath, $site, $operation);
+                $this->archiveScripts($staging ?? $scriptsPath, $archive);
             } else {
                 $staging = sys_get_temp_dir().'/metator-staging-'.bin2hex(random_bytes(8));
                 $this->files->copyDirectory($scriptsPath, $staging);
                 $this->files->copy($environmentInput, $staging.'/.env-input');
+                if ($operation === 'provision') {
+                    $this->writeCloudflareSecrets($staging, $site);
+                }
                 $this->archiveScripts($staging, $archive);
             }
             $target = $site['ssh']['user'].'@'.$site['ssh']['host'];
@@ -67,6 +71,32 @@ class RemoteScriptRunner
                 $this->files->deleteDirectory($staging);
             }
         }
+    }
+
+    /** @param array<string, mixed> $site */
+    private function stageScripts(string $scriptsPath, array $site, string $operation): ?string
+    {
+        if ($operation !== 'provision' || ! isset($site['cloudflare'])) {
+            return null;
+        }
+        $staging = sys_get_temp_dir().'/metator-staging-'.bin2hex(random_bytes(8));
+        $this->files->copyDirectory($scriptsPath, $staging);
+        $this->writeCloudflareSecrets($staging, $site);
+
+        return $staging;
+    }
+
+    /** @param array<string, mixed> $site */
+    private function writeCloudflareSecrets(string $staging, array $site): void
+    {
+        if (! is_array($site['cloudflare'] ?? null)) {
+            return;
+        }
+        $token = $site['cloudflare']['token'];
+        $zoneId = $site['cloudflare']['zone_id'];
+        $path = $staging.'/.cloudflare.env';
+        $this->files->put($path, 'CF_TOKEN='.escapeshellarg($token).PHP_EOL.'CF_ZONE_ID='.escapeshellarg($zoneId).PHP_EOL);
+        @chmod($path, 0600);
     }
 
     private function archiveScripts(string $scriptsPath, string $archive): void

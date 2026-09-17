@@ -81,6 +81,25 @@ class RunRemoteProvisioningCommand extends Command
             throw new RuntimeException('Site ID or SSH target contains unsafe characters.');
         }
 
+        if (($site['cloudflare'] ?? false) === true) {
+            $localSecrets = preg_replace('/\.php$/', '.local.php', $path);
+            if (is_string($localSecrets) && is_file($localSecrets)) {
+                $secrets = require $localSecrets;
+                if (is_array($secrets)) {
+                    $site['cloudflare'] = $secrets['cloudflare'] ?? null;
+                }
+            }
+        } else {
+            unset($site['cloudflare']);
+        }
+        if (isset($site['cloudflare'])) {
+            if (! is_array($site['cloudflare']) || ! is_string($site['cloudflare']['token'] ?? null)
+                || $site['cloudflare']['token'] === '' || ! is_string($site['cloudflare']['zone_id'] ?? null)
+                || preg_match('/^[A-Za-z0-9]+$/', $site['cloudflare']['zone_id']) !== 1) {
+                throw new RuntimeException('Local Cloudflare credentials are invalid.');
+            }
+        }
+
         return $site;
     }
 }
