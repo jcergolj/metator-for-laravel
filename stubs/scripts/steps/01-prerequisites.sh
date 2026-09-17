@@ -90,6 +90,10 @@ prepare_shared_baseline() {
         shared_packages+=(supervisor)
     fi
     sudo apt-get install -y "${shared_packages[@]}" || return 1
+    if ! command -v composer >/dev/null 2>&1; then
+        die 'Composer installation did not provide the composer command; refresh generated scripts with metator:install --force and retry'
+        return 1
+    fi
 
     if ! apt-cache show "php${PHP_VERSION}-fpm" >/dev/null 2>&1; then
         if ! command -v add-apt-repository >/dev/null 2>&1; then

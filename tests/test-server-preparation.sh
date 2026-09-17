@@ -26,6 +26,7 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$prerequisites_text" == *'shared_packages+=(cron)'* ]]
 [[ "$prerequisites_text" == *'add-apt-repository -y ppa:ondrej/php'* ]]
 [[ "$prerequisites_text" == *'add-apt-repository is required'* ]]
+[[ "$prerequisites_text" == *'Composer installation did not provide the composer command'* ]]
 [[ "$common_text" == *"\"\$METATOR_OPERATION\" == prepare-server"* ]]
 [[ "$common_text" == *"skip_step \"\$title\""* ]]
 
