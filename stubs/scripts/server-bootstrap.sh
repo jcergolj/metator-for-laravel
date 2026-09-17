@@ -12,7 +12,10 @@ esac
 # All applications modify the same SSH config, crontab, and Caddyfile.
 # Keep the lock for the complete bootstrap, including interactive reviews.
 if [[ "$EUID" -ne 0 ]]; then
-    exec sudo env METATOR_OPERATION="$METATOR_OPERATION" bash "$SCRIPT_DIR/server-bootstrap.sh" "$@"
+    exec sudo env \
+        METATOR_OPERATION="$METATOR_OPERATION" \
+        CLIENT_PUBLIC_KEY="${CLIENT_PUBLIC_KEY:-}" \
+        bash "$SCRIPT_DIR/server-bootstrap.sh" "$@"
 fi
 exec 9>/var/lock/metator-bootstrap.lock
 if ! flock -n 9; then

@@ -9,6 +9,7 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$bootstrap_text" == *"PHP_VERSION='__PHP_VERSION__'"* ]]
 [[ "$bootstrap_text" == *"SITE_ID='__SITE_ID__'"* ]]
 [[ "$bootstrap_text" == *'require_commands ssh-keyscan'* ]]
+[[ "$bootstrap_text" == *'CLIENT_PUBLIC_KEY="${CLIENT_PUBLIC_KEY:-}"'* ]]
 [[ "$bootstrap_text" == *"PHP_FPM_SERVICE=\"php\${PHP_VERSION}-fpm\""* ]]
 [[ "$bootstrap_text" == *'METATOR_OPERATION" != prepare-server'* ]]
 [[ "$bootstrap_text" == *"PHP_VERSION='8.4'"* ]]
