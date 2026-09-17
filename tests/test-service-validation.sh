@@ -124,6 +124,17 @@ rm "$TEST_DIR/supervisor-actions"
 step_workers
 [[ ! -e "$TEST_DIR/supervisor-actions" ]]
 
+# Matching workers must still repair a missing or outdated site sudo policy.
+rm "$SUPERVISOR_SUDOERS_FILE"
+step_workers
+[[ "$(<"$SUPERVISOR_SUDOERS_FILE")" == "$sudoers_before" ]]
+rm "$SUPERVISOR_SUDOERS_FILE"
+printf '# Managed by Metator: site_id=billing\nobsolete rule\n' > "$SUPERVISOR_SUDOERS_FILE"
+step_workers
+[[ "$(<"$SUPERVISOR_SUDOERS_FILE")" == "$sudoers_before" ]]
+[[ "$(<"$SUPERVISOR_FILE")" == "$worker_before" ]]
+[[ ! -e "$TEST_DIR/supervisor-actions" ]]
+
 # Both nonzero failures and zero-exit RPC errors restore the previous file.
 USE_HORIZON=true
 for SUPERVISOR_STATUS in 0 1; do
