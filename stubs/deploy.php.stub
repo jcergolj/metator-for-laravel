@@ -53,18 +53,16 @@ after('artisan:migrate', 'deploy:cache');
 
 if ($workerType !== 'none') {
     task('deploy:activate-workers', function () {
-        run('sudo supervisorctl reread');
-        run('sudo supervisorctl update');
+        run('sudo supervisorctl update {{application}}-worker');
     });
 
     task('deploy:restart-workers', function () {
         if ($workerType === 'horizon') {
             run('cd {{release_path}} && {{bin/php}} artisan horizon:terminate');
-        } elseif ($workerType === 'queue') {
-            run('cd {{release_path}} && {{bin/php}} artisan queue:restart');
-        } else {
+        } elseif ($workerType !== 'queue') {
             throw new \RuntimeException('WORKER_TYPE must be either horizon or queue');
         }
+        run('sudo supervisorctl restart {{application}}-worker:*');
     });
 
     task('deploy:verify-workers', function () {

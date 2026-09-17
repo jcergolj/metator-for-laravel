@@ -21,9 +21,11 @@ step_deployer_instructions() {
         if [[ "$USE_HORIZON" == true ]]; then
             echo '  Horizon: deploy.php already terminates Horizon after the new release is live.'
             echo '  Horizon server setup: scripts/server-bootstrap.sh installs Redis and writes the Supervisor program.'
+            echo '  Horizon application requirement: require laravel/horizon and use the selected Redis queue capability.'
         else
             echo '  Queue workers: deploy.php restarts queue workers after the new release is live.'
             echo '  Queue worker server setup: scripts/server-bootstrap.sh writes the Supervisor queue:work program.'
+            echo '  Queue timeout: keep Laravel retry_after greater than the worker timeout of 60 seconds.'
         fi
     fi
     if [[ "$USE_QUEUE" != true ]]; then
