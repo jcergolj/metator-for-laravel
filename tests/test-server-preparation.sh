@@ -15,6 +15,8 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$prerequisites_text" == *"php\${PHP_VERSION}-fpm"* ]]
 [[ "$prerequisites_text" == *'software-properties-common caddy'* ]]
 [[ "$prerequisites_text" == *'openssh-client'* ]]
+[[ "$prerequisites_text" == *'mariadb-server'* ]]
+[[ "$prerequisites_text" == *"php\${PHP_VERSION}-mysql"* ]]
 [[ "$prerequisites_text" == *'add-apt-repository -y ppa:ondrej/php'* ]]
 [[ "$common_text" == *"\"\$METATOR_OPERATION\" == prepare-server"* ]]
 [[ "$common_text" == *"skip_step \"\$title\""* ]]

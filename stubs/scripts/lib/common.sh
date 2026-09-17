@@ -385,6 +385,30 @@ configure_database_env() {
     set_env_value DB_PASSWORD "$MYSQL_PASSWORD"
 }
 
+site_database_name() {
+    printf 'metator_%s\n' "${SITE_ID//-/_}"
+}
+
+site_database_user() {
+    printf 'metator_%s\n' "${SITE_ID//-/_}"
+}
+
+site_metadata_value() {
+    local key="$1" metadata_file="$APP_FOLDER/.metator-site"
+    sudo sed -nE "s/^${key}=(.*)$/\1/p" "$metadata_file" | sed -n '1p'
+}
+
+record_site_database() {
+    local metadata_file="$APP_FOLDER/.metator-site"
+    if ! sudo grep -q '^database_name=' "$metadata_file"; then
+        printf '%s\n' \
+            "database_name=$MYSQL_DATABASE" \
+            "database_user=$MYSQL_USERNAME" \
+            "database_host=$MYSQL_HOST" |
+            sudo tee -a "$metadata_file" >/dev/null || return 1
+    fi
+}
+
 ensure_database_config() {
     if [[ "$DATABASE_CONFIG_READY" == true ]]; then
         return
@@ -402,6 +426,9 @@ ensure_database_config() {
     fi
 
     local env_file="$APP_FOLDER/shared/.env"
+    local expected_database expected_user
+    expected_database="$(site_database_name)"
+    expected_user="$(site_database_user)"
     if [[ "$ENV_FILE_CREATED" != true ]] && env_key_exists DB_HOST "$env_file" &&
         env_key_exists DB_PORT "$env_file" && env_key_exists DB_DATABASE "$env_file" &&
         env_key_exists DB_USERNAME "$env_file" && env_key_exists DB_PASSWORD "$env_file"; then
@@ -410,12 +437,17 @@ ensure_database_config() {
         read_env_value DB_DATABASE "$env_file" MYSQL_DATABASE
         read_env_value DB_USERNAME "$env_file" MYSQL_USERNAME
         read_env_value DB_PASSWORD "$env_file" MYSQL_PASSWORD
+        if [[ "$MYSQL_DATABASE" != "$expected_database" || "$MYSQL_USERNAME" != "$expected_user" ||
+            "$MYSQL_HOST" != 127.0.0.1 || "$MYSQL_PORT" != 3306 ]]; then
+            die 'Existing MySQL settings are not owned by this site'
+            return 1
+        fi
     else
-        prompt_value 'MySQL host' MYSQL_HOST '127.0.0.1' || return 1
-        prompt_value 'MySQL port' MYSQL_PORT '3306' || return 1
-        prompt_value 'MySQL database' MYSQL_DATABASE || return 1
-        prompt_value 'MySQL username' MYSQL_USERNAME || return 1
-        prompt_secret 'MySQL password' MYSQL_PASSWORD || return 1
+        MYSQL_HOST=127.0.0.1
+        MYSQL_PORT=3306
+        MYSQL_DATABASE="$expected_database"
+        MYSQL_USERNAME="$expected_user"
+        MYSQL_PASSWORD="$(openssl rand -base64 36 | tr -d '\n')"
     fi
 
     DATABASE_CONFIG_READY=true
