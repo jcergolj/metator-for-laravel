@@ -18,7 +18,7 @@ final class InstallationPrompts
         $configName = text(label: __('Configuration name'), default: 'production', required: true, validate: fn (string $value): ?string => preg_match('/^[a-z][a-z0-9-]*$/', $value) === 1 ? null : __('Use lowercase letters, numbers, and hyphens, starting with a letter.'));
         $repository = text(label: __('GitHub repository (owner/repository)'), default: 'jcergolj/'.$project, required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', $value) === 1 ? null : __('Repository must look like owner/repository.'));
         $suggestedSiteId = $this->suggestedSiteId($repository, $configName);
-        $siteId = text(label: __('Site ID'), default: $suggestedSiteId, required: true, validate: fn (string $value): ?string => $this->validSiteId($value) ? null : __('Use 1-24 lowercase letters or digits, with single hyphens between segments.'));
+        $siteId = text(label: __('Site ID'), default: $suggestedSiteId ?? '', required: true, validate: fn (string $value): ?string => $this->validSiteId($value) ? null : __('Use 1-24 lowercase letters or digits, with single hyphens between segments.'));
         $availableSteps = $catalogue->available($stepCatalogue);
         $selectedStepIds = multiselect(label: __('Deployment steps'), options: array_column($availableSteps, 'title', 'id'), default: array_column(array_filter($availableSteps, fn (array $step): bool => $step['default']), 'id'), required: true, hint: __('Select the steps that should be included in the generated server scripts.'));
         $workerType = select(label: __('Worker mode'), options: ['none' => __('No workers'), 'queue' => __('Standard queue workers'), 'horizon' => __('Laravel Horizon')], default: 'none');
