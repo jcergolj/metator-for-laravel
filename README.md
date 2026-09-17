@@ -235,6 +235,19 @@ finished.
 version and required base packages. `provision` reuses that prepared baseline;
 it does not install or upgrade shared packages.
 
+To explicitly update application-specific environment values, keep them in a
+Git-ignored local dotenv file and select both the site configuration and input:
+
+```bash
+php artisan metator:update-env --config=metator.production.php --input=.env.production.local
+```
+
+The update preserves Metator-managed identity, runtime, database, and Redis
+values, transfers the input without printing secrets, and atomically updates
+only the selected site's environment. It does not refresh cached Laravel
+configuration or restart workers; run those actions through the normal Deployer
+and application lifecycle.
+
 ## Deploy
 
 Review `deploy.php` and select one worker mode during installation: no workers,

@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Jcergolj\MetatorForLaravel\Commands\InstallDeployerScaffoldingCommand;
 use Jcergolj\MetatorForLaravel\Commands\PrepareServerCommand;
 use Jcergolj\MetatorForLaravel\Commands\RunRemoteProvisioningCommand;
+use Jcergolj\MetatorForLaravel\Commands\UpdateEnvironmentCommand;
 
 class MetatorServiceProvider extends ServiceProvider
 {
@@ -24,6 +25,7 @@ class MetatorServiceProvider extends ServiceProvider
                 InstallDeployerScaffoldingCommand::class,
                 PrepareServerCommand::class,
                 RunRemoteProvisioningCommand::class,
+                UpdateEnvironmentCommand::class,
             ]);
         }
     }

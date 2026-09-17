@@ -15,7 +15,7 @@ class RemoteScriptRunner
     }
 
     /** @param array<string, mixed> $site */
-    public function run(array $site, string $operation, string $scriptsPath, callable $output): int
+    public function run(array $site, string $operation, string $scriptsPath, callable $output, ?string $environmentInput = null): int
     {
         $archive = tempnam(sys_get_temp_dir(), 'metator-');
         if ($archive === false) {
@@ -23,8 +23,16 @@ class RemoteScriptRunner
         }
         $archive .= '.tar.gz';
 
+        $staging = null;
         try {
-            $this->archiveScripts($scriptsPath, $archive);
+            if ($environmentInput === null) {
+                $this->archiveScripts($scriptsPath, $archive);
+            } else {
+                $staging = sys_get_temp_dir().'/metator-staging-'.bin2hex(random_bytes(8));
+                $this->files->copyDirectory($scriptsPath, $staging);
+                $this->files->copy($environmentInput, $staging.'/.env-input');
+                $this->archiveScripts($staging, $archive);
+            }
             $target = $site['ssh']['user'].'@'.$site['ssh']['host'];
             $remoteArchive = '/tmp/metator-'.$site['site_id'].'.tar.gz';
             $status = $this->execute(
@@ -55,6 +63,9 @@ class RemoteScriptRunner
             );
         } finally {
             $this->files->delete($archive);
+            if ($staging !== null) {
+                $this->files->deleteDirectory($staging);
+            }
         }
     }
 
