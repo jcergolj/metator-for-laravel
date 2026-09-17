@@ -62,8 +62,8 @@ prepare_shared_baseline() {
     fi
 
     . /etc/os-release
-    if [[ "$ID" == ubuntu ]] && [[ "${VERSION_ID:-}" != 24.04 ]]; then
-        die 'Metator preparation requires Ubuntu 24.04'
+    if [[ "$ID" == ubuntu ]] && [[ "${VERSION_ID:-}" != 24.04 && "${VERSION_ID:-}" != 26.04 ]]; then
+        die 'Metator preparation requires Ubuntu 24.04 or 26.04'
         return 1
     fi
 

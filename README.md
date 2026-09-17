@@ -238,9 +238,14 @@ not read from remote stdin. Provisioning does not run Deployer. If SSH stops,
 inspect the server before retrying because the remote operation may have
 finished.
 
-`prepare-server` checks Ubuntu 24.04 and installs the selected PHP-FPM/CLI
-version and required base packages. `provision` reuses that prepared baseline;
-it does not install or upgrade shared packages.
+`prepare-server` checks Ubuntu 24.04 or 26.04 and installs the selected
+PHP-FPM/CLI version and required base packages. PHP 8.4 and 8.5 are the target
+branches on both releases, with PHP 8.5 as the default for new sites. Full
+Ubuntu 26.04 support is gated on the complete release acceptance suite. Ubuntu
+packages are used first; the Ondrej PHP PPA is added when the selected PHP
+branch is not available from the Ubuntu package sources. `provision` reuses that
+prepared baseline; it does not install or upgrade shared packages or upgrade the
+server's operating system.
 
 To explicitly update application-specific environment values, keep them in a
 Git-ignored local dotenv file and select both the site configuration and input:
