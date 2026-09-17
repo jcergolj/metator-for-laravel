@@ -18,6 +18,7 @@ common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 
 [[ "$prompts_text" == *'use function Laravel\Prompts\text;'* ]]
 [[ "$prompts_text" == *"'Server IP address'"* ]]
+[[ "$prompts_text" == *"default: \$suggestedSiteId ?? ''"* ]]
 [[ "$prompts_text" != *"'Git SSH deployer name'"* ]]
 [[ "$prompts_text" == *"'__GIT_DEPLOYER_NAME__' => 'git-'.\$siteId"* ]]
 [[ "$prompts_text" == *'use function Laravel\Prompts\multiselect;'* ]]

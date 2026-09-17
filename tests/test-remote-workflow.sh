@@ -30,5 +30,12 @@ readme_text="$(<"$ROOT_DIR/README.md")"
 [[ "$readme_text" == *'metator:prepare-server --config=metator.production.php'* ]]
 [[ "$readme_text" == *'Provisioning does not run Deployer'* ]]
 [[ "$readme_text" == *'metator:provision --config=metator.production.php'* ]]
+[[ "$readme_text" == *'Ubuntu 24.04'* ]]
+[[ "$readme_text" == *'vendor/bin/dep deploy production'* ]]
+[[ "$readme_text" == *'four deployed sites'* ]]
+[[ "$readme_text" == *'Redis allocates two'* && "$readme_text" == *'logical databases per site'* ]]
+[[ "$readme_text" == *'unchanged provisioning rerun'* ]]
+[[ "$readme_text" == *'Resource ownership and removal'* ]]
+[[ "$readme_text" == *'Ownership conflict'* ]]
 
 printf '%s\n' 'Remote workflow checks passed.'
