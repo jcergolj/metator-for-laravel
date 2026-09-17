@@ -129,6 +129,7 @@ class InstallDeployerScaffoldingCommand extends Command
 
         $placeholders = [
             '__APP_NAME__' => $project,
+            '__CONFIG_FILE__' => 'metator.'.$configName.'.php',
             '__DEPLOY_PATH__' => '/var/www/'.$siteId,
             '__SITE_ID__' => $siteId,
             '__GITHUB_REPOSITORY__' => $repository,
@@ -200,6 +201,7 @@ class InstallDeployerScaffoldingCommand extends Command
                 'host' => $placeholders['__SERVER_IP__'],
                 'user' => $placeholders['__SSH_USER__'],
             ],
+            'deploy_user' => 'deployer',
             'domain' => $placeholders['__DOMAIN__'],
             'repository' => $placeholders['__GITHUB_REPOSITORY__'],
             'php_version' => $placeholders['__PHP_VERSION__'],
@@ -235,10 +237,9 @@ class InstallDeployerScaffoldingCommand extends Command
         $this->info('Metator scaffolding installed.');
         $this->line('Next steps:');
         $this->line('  1. Review deploy.php');
-        $this->line('  2. Copy ./scripts to the server:');
-        $this->line('     scp -r ./scripts root@your-server:/var/scripts/');
-        $this->line('  3. Run the bootstrap script:');
-        $this->line('     ssh root@your-server "chmod +x /var/scripts/server-bootstrap.sh && /var/scripts/server-bootstrap.sh"');
+        $this->line("  2. Prepare the shared server baseline when needed: php artisan metator:prepare-server --config=metator.{$configName}.php");
+        $this->line("  3. Provision the site: php artisan metator:provision --config=metator.{$configName}.php");
+        $this->line('  4. Deploy separately after infrastructure readiness: vendor/bin/dep deploy production');
 
         return self::SUCCESS;
     }

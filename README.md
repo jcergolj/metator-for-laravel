@@ -271,8 +271,11 @@ and application lifecycle.
 ## Deploy
 
 Review `deploy.php` and select one worker mode during installation: no workers,
-standard queue workers, or Horizon. The generated deploy command already matches
-that choice; no environment override is required:
+standard queue workers, or Horizon. The recipe reads the selected site
+configuration for its immutable identity, repository, SSH target, deploy path,
+PHP executable, database mode, and worker lifecycle. It verifies the provisioned
+PHP runtime before any deployment mutation. The generated deploy command already
+matches the selected worker mode; no environment override is required:
 
 ```bash
 vendor/bin/dep deploy production
