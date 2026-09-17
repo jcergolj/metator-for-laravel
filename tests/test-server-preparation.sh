@@ -19,6 +19,7 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$prerequisites_text" == *"php\${PHP_VERSION}-fpm"* ]]
 [[ "$prerequisites_text" == *'software-properties-common caddy'* ]]
 [[ "$prerequisites_text" == *'openssh-client'* ]]
+[[ "$prerequisites_text" == *'curl jq unzip'* ]]
 [[ "$prerequisites_text" == *'mariadb-server'* ]]
 [[ "$prerequisites_text" == *"php\${PHP_VERSION}-mysql"* ]]
 [[ "$prerequisites_text" == *'redis-server'* ]]

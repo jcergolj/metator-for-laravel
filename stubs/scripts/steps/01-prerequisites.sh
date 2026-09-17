@@ -76,7 +76,7 @@ prepare_shared_baseline() {
 
     require_commands apt-get apt-cache || return 1
     sudo apt-get update || return 1
-    local shared_packages=(ca-certificates composer git curl unzip openssh-client software-properties-common caddy)
+    local shared_packages=(ca-certificates composer git curl jq unzip openssh-client software-properties-common caddy)
     if [[ "$DATABASE_DRIVER" == mysql ]]; then
         shared_packages+=(mariadb-server)
     fi
