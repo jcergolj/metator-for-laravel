@@ -58,6 +58,8 @@ sudo() {
     command "$executable" "${arguments[@]}"
 }
 
+supervisorctl() { :; }
+
 SITE_ID=billing
 APP_NAME=billing
 APP_FOLDER="$TEST_DIR/app"
@@ -67,6 +69,7 @@ PHP_FPM_SOCKET=/run/php/php8.4-fpm.sock
 CADDY_SITE=/etc/caddy/sites-enabled/billing.caddy
 FAIL_REWRITE=false
 CADDY_STATUS=0
+mkdir -p "$APP_FOLDER/current/public"
 mkdir -p "$TEST_DIR/etc/caddy/sites-enabled"
 printf '# Shared config\nimport /etc/caddy/sites-enabled/*.caddy\n' > "$TEST_DIR/etc/caddy/Caddyfile"
 cat > "$TEST_DIR$CADDY_SITE" <<EOF
