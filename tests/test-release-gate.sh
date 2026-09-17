@@ -13,7 +13,7 @@ docs_text="$(<"$ROOT_DIR/docs/acceptance-release-gate.md")"
 [[ "$runner_text" == *'24.04|'* ]]
 [[ "$runner_text" == *'|26.04)'* ]]
 [[ "$runner_text" == *'requested_release='* ]]
-[[ "$runner_text" == *'ubuntu-${release}'* ]]
+[[ "$runner_text" == *"ubuntu-\${release}"* ]]
 [[ "$runner_text" == *'trap cleanup EXIT'* ]]
 [[ "$runner_text" == *'Release-gate evidence'* ]]
 [[ "$docs_text" == *'metator:prepare-server'* ]]

@@ -31,6 +31,7 @@ run_release() (
     local target_file
     mkdir -p "$release_evidence"
     target_file="$(mktemp)"
+    # shellcheck disable=SC2317
     cleanup() {
         local status=$?
         local destroy_status=0
@@ -55,6 +56,7 @@ run_release() (
     : "${target_id:?Provider output must define target_id}"
 
     ssh_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -i "$identity")
+    # shellcheck disable=SC2029
     ssh "${ssh_options[@]}" "$user@$host" "test \"\$(. /etc/os-release && printf %s \"\$VERSION_ID\")\" = $release"
     ssh "${ssh_options[@]}" "$user@$host" 'command -v php && command -v composer && command -v git && command -v sudo && command -v systemctl'
     {
