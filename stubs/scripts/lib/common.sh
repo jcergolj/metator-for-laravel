@@ -178,8 +178,8 @@ print_step_summary() {
     echo 'Step summary'
     print_step_group 'Performed successfully:' "${STEP_SUCCESSFUL[@]}"
     print_step_group 'Failed:' "${STEP_FAILED[@]}"
-    print_step_group 'Skipped:' "${STEP_SKIPPED[@]}"
     if [[ "${#STEP_FAILED[@]}" -gt 0 ]]; then
+        print_step_group 'Skipped:' "${STEP_SKIPPED[@]}"
         warn 'Selected steps failed. Correct the failures and rerun the bootstrap.'
     fi
 }
