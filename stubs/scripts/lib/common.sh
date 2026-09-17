@@ -70,20 +70,33 @@ require_commands() {
 }
 
 claim_application_folder() {
-    local identity_file="$APP_FOLDER/.metator-repository"
+    local identity_file="$APP_FOLDER/.metator-site"
     if sudo test -L "$APP_FOLDER"; then
         die "Application folder must not be a symlink: $APP_FOLDER"
         return 1
     fi
+    if sudo test -e "$APP_FOLDER" && ! sudo test -f "$identity_file"; then
+        die "Application folder is unmarked and cannot be adopted: $APP_FOLDER"
+        return 1
+    fi
     if sudo test -e "$identity_file"; then
-        if ! sudo grep -qxF "$GITHUB_REPOSITORY" "$identity_file"; then
-            die "Application folder belongs to another repository: $APP_FOLDER"
+        if ! sudo grep -qxF "site_id=$SITE_ID" "$identity_file" ||
+            ! sudo grep -qxF "repository=$GITHUB_REPOSITORY" "$identity_file" ||
+            ! sudo grep -qxF "php_version=$PHP_VERSION" "$identity_file" ||
+            ! sudo grep -qxF "database=$DATABASE_DRIVER" "$identity_file"; then
+            die "Application folder belongs to another site or runtime: $APP_FOLDER"
             return 1
         fi
+
         return
     fi
     sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER" || return 1
-    printf '%s\n' "$GITHUB_REPOSITORY" | sudo tee "$identity_file" >/dev/null || return 1
+    printf '%s\n' \
+        "site_id=$SITE_ID" \
+        "repository=$GITHUB_REPOSITORY" \
+        "php_version=$PHP_VERSION" \
+        "database=$DATABASE_DRIVER" |
+        sudo install -m 640 -o "$DEPLOY_USER" -g www-data /dev/stdin "$identity_file" || return 1
 }
 
 prompt_value() {
@@ -238,8 +251,12 @@ run_selected_steps() {
 require_safe_inputs() {
     [[ "$GITHUB_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] ||
         { die 'GitHub repository must look like owner/repository'; return 1; }
+    [[ "${#SITE_ID}" -le 24 && "$SITE_ID" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]] ||
+        { die 'Site ID must be 1-24 lowercase letters or digits with single hyphens'; return 1; }
     [[ "$APP_FOLDER" =~ ^/var/www/[A-Za-z0-9_.-]+$ && "$APP_FOLDER" != /var/www/. && "$APP_FOLDER" != /var/www/.. ]] ||
         { die 'Application folder must be a simple path under /var/www'; return 1; }
+    [[ "$APP_FOLDER" == "/var/www/${SITE_ID}" ]] ||
+        { die 'Application folder must be derived from the site ID'; return 1; }
     [[ "$GITHUB_ALIAS" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
         { die 'Invalid Git SSH deployer name'; return 1; }
     case "${GITHUB_ALIAS,,}" in
@@ -278,6 +295,10 @@ set_env_value() {
     escaped="${value//\\/\\\\}"
     escaped="${escaped//\"/\\\"}"
     escaped="${escaped//\$/\\\$}"
+    local desired="${key}=\"${escaped}\""
+    if sudo grep -Fxq "$desired" "$APP_FOLDER/shared/.env"; then
+        return
+    fi
     if sudo grep -qE "^${key}=" "$APP_FOLDER/shared/.env"; then
         temporary="$(mktemp)"
         source_file="$(mktemp)"
@@ -314,8 +335,10 @@ merge_env_example() {
 
 ensure_production_env() {
     local env_file="$1" app_key=''
-    if [[ "$ENV_FILE_CREATED" == true ]]; then
+    if [[ "$ENV_FILE_CREATED" == true ]] || ! env_key_exists APP_ENV "$env_file"; then
         set_env_value APP_ENV production
+    fi
+    if [[ "$ENV_FILE_CREATED" == true ]] || ! env_key_exists APP_DEBUG "$env_file"; then
         set_env_value APP_DEBUG false
     fi
     if env_key_exists APP_KEY "$env_file"; then
