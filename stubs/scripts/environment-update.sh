@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
 ENV_INPUT_FILE="$SCRIPT_DIR/.env-input"
+temporary=''
+trap 'rm -f "$ENV_INPUT_FILE" "${temporary:-}"' EXIT
 ENV_FILE="$APP_FOLDER/shared/.env"
 [[ -f "$ENV_INPUT_FILE" ]] || { die 'Missing local environment input'; exit 1; }
 [[ -f "$ENV_FILE" ]] || { die 'The selected site environment does not exist; provision the site first'; exit 1; }
@@ -13,7 +15,6 @@ ENV_FILE="$APP_FOLDER/shared/.env"
 
 protected_keys='^(APP_KEY|DB_CONNECTION|DB_HOST|DB_PORT|DB_DATABASE|DB_USERNAME|DB_PASSWORD|REDIS_DB|REDIS_CACHE_DB|REDIS_HOST|REDIS_PORT|REDIS_PREFIX|CACHE_PREFIX|HORIZON_PREFIX)$'
 temporary="$(mktemp "$(dirname "$ENV_FILE")/.env.update.XXXXXX")"
-trap 'rm -f "$temporary"' EXIT
 sudo cp "$ENV_FILE" "$temporary"
 
 while IFS= read -r line || [[ -n "$line" ]]; do

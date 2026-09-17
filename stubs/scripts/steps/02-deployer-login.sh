@@ -11,7 +11,7 @@ step_deployer_login() {
         return
     fi
 
-    ensure_deploy_user_exists
+    ensure_deploy_user_exists || return 1
     local ssh_dir="/home/${DEPLOY_USER}/.ssh"
     local authorized_keys="${ssh_dir}/authorized_keys"
     if sudo test -f "$authorized_keys" &&
@@ -34,18 +34,18 @@ step_deployer_login() {
         return 1
     fi
 
-    sudo install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$ssh_dir"
+    sudo install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$ssh_dir" || return 1
     if ! sudo test -f "$authorized_keys"; then
-        sudo install -m 600 -o "$DEPLOY_USER" -g "$DEPLOY_USER" /dev/null "$authorized_keys"
+        sudo install -m 600 -o "$DEPLOY_USER" -g "$DEPLOY_USER" /dev/null "$authorized_keys" || return 1
     fi
 
     if ! sudo grep -qxF "$CLIENT_PUBLIC_KEY" "$authorized_keys"; then
-        printf '%s\n' "$CLIENT_PUBLIC_KEY" | sudo tee -a "$authorized_keys" >/dev/null
+        printf '%s\n' "$CLIENT_PUBLIC_KEY" | sudo tee -a "$authorized_keys" >/dev/null || return 1
     fi
 
-    sudo chown -R "$DEPLOY_USER:$DEPLOY_USER" "$ssh_dir"
-    sudo chmod 700 "$ssh_dir"
-    sudo chmod 600 "$authorized_keys"
+    sudo chown "$DEPLOY_USER:$DEPLOY_USER" "$ssh_dir" "$authorized_keys" || return 1
+    sudo chmod 700 "$ssh_dir" || return 1
+    sudo chmod 600 "$authorized_keys" || return 1
 
     ok "SSH login key configured for $DEPLOY_USER"
     echo "Test from your computer with: ssh ${DEPLOY_USER}@${SERVER_IP}"

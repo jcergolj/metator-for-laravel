@@ -32,7 +32,7 @@ USE_HORIZON=false
 USE_REDIS=false
 REDIS_CAPABILITY=none
 CONFIGURE_DEPLOY_USER_LOGIN=false
-CLIENT_PUBLIC_KEY=''
+CLIENT_PUBLIC_KEY="${CLIENT_PUBLIC_KEY:-}"
 ENV_FILE_CREATED=false
 ENV_UPDATED=false
 REDIS_CONFIG_READY=false
@@ -237,9 +237,11 @@ run_selected_steps() {
     done
 
     while IFS='|' read -r order step_file title required function_name; do
-        if [[ "$METATOR_OPERATION" == prepare-server && "$(step_metadata "$step_file" id)" != prerequisites ]]; then
-            skip_step "$title"
-            continue
+        if [[ "$METATOR_OPERATION" == prepare-server ]]; then
+            case "$(step_metadata "$step_file" id)" in
+                prerequisites|node) ;;
+                *) continue ;;
+            esac
         fi
         if run_step "$title" "Runs ${title}." "$function_name"; then
             status=0

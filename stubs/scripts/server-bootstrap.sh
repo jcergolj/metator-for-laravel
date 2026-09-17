@@ -73,6 +73,7 @@ PHP_PACKAGE_PREFIX="php${PHP_VERSION}"
 require_safe_inputs
 
 if [[ "$METATOR_OPERATION" == update-environment ]]; then
+    export APP_FOLDER SITE_ID
     exec bash "$SCRIPT_DIR/environment-update.sh"
 fi
 
@@ -106,8 +107,10 @@ for step_file in "$SCRIPT_DIR"/steps/*.sh; do
 done
 validate_step_functions || exit 1
 
-prepare_deploy_user || exit 1
-claim_application_folder || exit 1
+if [[ "$METATOR_OPERATION" == provision ]]; then
+    prepare_deploy_user || exit 1
+    claim_application_folder || exit 1
+fi
 bootstrap_status=0
 run_selected_steps || bootstrap_status=$?
 print_step_summary
@@ -120,5 +123,5 @@ echo
 ok 'Server setup finished'
 if [[ "$METATOR_OPERATION" == prepare-server ]]; then
     echo 'Next step: provision the selected site with:'
-    echo '  php artisan metator:provision --config=metator.production.php'
+    echo '  php artisan metator:provision --config=__CONFIG_FILE__'
 fi
