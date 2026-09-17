@@ -208,16 +208,21 @@ bootstrap="$(<"$ROOT_DIR/stubs/scripts/server-bootstrap.sh")"
 
 # Only this application's pending Supervisor changes should be applied.
 supervisorctl() { :; }
-sudo() { printf '%s\n' "$*" >> "$TEST_DIR/commands"; }
+supervisord() { :; }
+sudo() {
+    [[ "${1:-}" != cmp ]] || return 1
+    printf '%s\n' "$*" >> "$TEST_DIR/commands"
+}
 APP_FOLDER="$TEST_DIR/app"
 APP_NAME=billing
 SUPERVISOR_FILE="$TEST_DIR/billing-worker.conf"
+SUPERVISOR_SUDOERS_FILE="$TEST_DIR/billing-worker.sudoers"
 USE_QUEUE=true
 USE_HORIZON=false
 mkdir -p "$APP_FOLDER/current"
 touch "$APP_FOLDER/current/artisan"
 step_workers <<< ''
-grep -qx 'supervisorctl update billing-worker' "$TEST_DIR/commands"
-if grep -qx 'supervisorctl update' "$TEST_DIR/commands"; then exit 1; fi
+if grep -q 'supervisorctl' "$TEST_DIR/commands"; then exit 1; fi
+grep -q 'supervisord -t' "$TEST_DIR/commands"
 
 printf 'Shared-server collision checks passed.\n'
