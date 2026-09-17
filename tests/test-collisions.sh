@@ -22,7 +22,8 @@ sandbox_sudo() {
         arguments+=("$argument")
     done
     case "$executable" in
-        chmod|chown|apt-get|git) return 0 ;;
+        chmod|chown|apt-get) return 0 ;;
+        git) return "${GIT_STATUS:-0}" ;;
         ssh-keyscan) printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n'; return 0 ;;
         ssh-keygen) printf 'Unexpected key generation\n' >&2; return 1 ;;
         install)
@@ -72,6 +73,15 @@ step_github_key </dev/null
 [[ "$(<"$ssh_dir/$GITHUB_ALIAS")" == existing-private-key ]]
 grep -qx 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' "$ssh_dir/known_hosts"
 first="$(<"$ssh_dir/config")"
+GIT_STATUS=1
+status=0
+step_github_key </dev/null >"$TEST_DIR/registration" 2>&1 || status=$?
+[[ "$status" == 75 ]]
+[[ "$(<"$TEST_DIR/registration")" == *'https://github.com/acme/billing/settings/keys'* ]]
+[[ "$(<"$TEST_DIR/registration")" == *existing-public-key* ]]
+[[ "$(<"$ssh_dir/$GITHUB_ALIAS")" == existing-private-key ]]
+GIT_STATUS=0
+step_github_key </dev/null
 printf 'github.com ssh-ed25519 conflicting-key\n' > "$ssh_dir/known_hosts"
 if step_github_key </dev/null; then exit 1; fi
 printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n' > "$ssh_dir/known_hosts"
@@ -235,8 +245,8 @@ USE_HORIZON=false
 mkdir -p "$APP_FOLDER/current"
 touch "$APP_FOLDER/current/artisan"
 step_workers <<< ''
-if grep -q 'supervisorctl' "$TEST_DIR/commands"; then exit 1; fi
-grep -q 'supervisord -t' "$TEST_DIR/commands"
+if grep -q '^supervisord \|supervisorctl.*update\|supervisorctl.*restart' "$TEST_DIR/commands"; then exit 1; fi
+grep -q 'supervisorctl -c /etc/supervisor/supervisord.conf reread' "$TEST_DIR/commands"
 
 # Disabling stops and removes only this site's owned worker configuration.
 SUPERVISOR_FILE="$TEST_DIR/billing-worker.conf"

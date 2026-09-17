@@ -136,8 +136,10 @@ EOF
 
     if ! sudo -u "$DEPLOY_USER" git ls-remote "$GITHUB_URL" HEAD >/dev/null; then
         show_github_registration_guidance
-        die 'GitHub access failed'
-        return 1
+        warn 'GitHub access is not ready. Register the key as read-only and confirm in the local Artisan command.'
+        # Reserved status understood by the local runner; it prompts locally
+        # and retries after the remote process has released its bootstrap lock.
+        return 75
     fi
     ok "App-specific GitHub key can read $GITHUB_REPOSITORY"
 }

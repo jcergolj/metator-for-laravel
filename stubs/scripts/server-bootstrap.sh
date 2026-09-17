@@ -113,6 +113,9 @@ if [[ "$METATOR_OPERATION" == provision ]]; then
 fi
 bootstrap_status=0
 run_selected_steps || bootstrap_status=$?
+if [[ "$bootstrap_status" -eq 75 ]]; then
+    exit "$bootstrap_status"
+fi
 print_step_summary
 
 if [[ "$bootstrap_status" -ne 0 ]]; then
