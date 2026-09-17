@@ -6,6 +6,8 @@ TEST_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEST_DIR"' EXIT
 source "$ROOT_DIR/stubs/scripts/lib/common.sh"
 source "$ROOT_DIR/stubs/scripts/steps/09-workers.sh"
+# Satisfy command discovery; the sudo mock below handles Supervisor calls.
+# shellcheck disable=SC2032
 supervisorctl() { :; }
 sudo() {
     printf '%s\n' "$*" >> "$TEST_DIR/commands"
