@@ -8,6 +8,7 @@
 
 step_scheduler() {
     if [[ "$USE_SCHEDULER" != true ]]; then
+        reconcile_disabled_scheduler
         return
     fi
 
@@ -49,4 +50,18 @@ EOF
     rm -f "$temporary"
     record_site_scheduler || return 1
     ok "Scheduler entry is configured at ${scheduler_file}"
+}
+
+reconcile_disabled_scheduler() {
+    local scheduler_file="${SCHEDULER_FILE:-/etc/cron.d/metator-${SITE_ID}}"
+    if [[ ! -e "$scheduler_file" ]]; then
+        ok 'Scheduler entry is already absent'
+        return
+    fi
+    if ! sudo grep -qxF "# Managed by Metator: site_id=${SITE_ID}" "$scheduler_file"; then
+        die "Scheduler file is not owned by site ${SITE_ID}: ${scheduler_file}"
+        return 1
+    fi
+    sudo rm -f "$scheduler_file" || return 1
+    ok "Removed scheduler entry for site ${SITE_ID}"
 }

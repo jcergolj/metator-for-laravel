@@ -8,6 +8,7 @@
 
 step_workers() {
     if [[ "$USE_QUEUE" != true ]]; then
+        reconcile_disabled_workers
         return
     fi
     require_commands supervisorctl supervisord || return 1
@@ -95,4 +96,43 @@ EOF
     else
         ok 'Queue worker Supervisor configuration is staged; deploy code before activation'
     fi
+}
+
+reconcile_disabled_workers() {
+    local worker_marker="# Managed by Metator: site_id=${SITE_ID}"
+    local worker_exists=false sudoers_exists=false
+
+    if [[ -e "$SUPERVISOR_FILE" ]]; then
+        worker_exists=true
+        if ! sudo grep -Fqx "$worker_marker" "$SUPERVISOR_FILE"; then
+            die "Supervisor configuration is not owned by this site: $SUPERVISOR_FILE"
+            return 1
+        fi
+    fi
+    if [[ -e "$SUPERVISOR_SUDOERS_FILE" ]]; then
+        sudoers_exists=true
+        if ! sudo grep -Fqx "$worker_marker" "$SUPERVISOR_SUDOERS_FILE"; then
+            die "Supervisor sudo policy is not owned by this site: $SUPERVISOR_SUDOERS_FILE"
+            return 1
+        fi
+    fi
+    if [[ "$worker_exists" != true && "$sudoers_exists" != true ]]; then
+        ok 'Supervisor worker configuration is already absent'
+        return
+    fi
+
+    require_commands supervisorctl || return 1
+    if [[ "$worker_exists" == true ]]; then
+        supervisorctl stop "${APP_NAME}-worker:*" || {
+            die "Could not stop workers for site ${SITE_ID}"
+            return 1
+        }
+        sudo rm -f "$SUPERVISOR_FILE" || return 1
+        supervisorctl reread || return 1
+        supervisorctl update || return 1
+    fi
+    if [[ "$sudoers_exists" == true ]]; then
+        sudo rm -f "$SUPERVISOR_SUDOERS_FILE" || return 1
+    fi
+    ok "Removed worker configuration for site ${SITE_ID}"
 }
