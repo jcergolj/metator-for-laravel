@@ -169,7 +169,7 @@ PHP_FPM_SOCKET=/run/php/php8.4-fpm.sock
 touch "$CADDY_CERT" "$CADDY_KEY"
 if step_caddy </dev/null; then exit 1; fi
 [[ "$(<"$TEST_DIR/etc/caddy/Caddyfile")" == '# Existing shared configuration' ]]
-[[ "$(<"$TEST_DIR/etc/caddy/sites-enabled/billing.app.caddy")" == 'previous app configuration' ]]
+[[ "$(<"$TEST_DIR/etc/caddy/sites-enabled/billing.app.caddy")" == $'# Managed by Metator: site_id=billing domain=example.com\nprevious app configuration' ]]
 [[ "$(<"$TEST_DIR/etc/caddy/sites-enabled/other.caddy")" == 'another site' ]]
 
 # New applications receive distinct shared Redis/cache/Horizon namespaces.
