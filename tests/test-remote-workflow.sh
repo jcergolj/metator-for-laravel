@@ -33,7 +33,7 @@ readme_text="$(<"$ROOT_DIR/README.md")"
 [[ "$readme_text" == *'Ubuntu 24.04'* ]]
 [[ "$readme_text" == *'vendor/bin/dep deploy production'* ]]
 [[ "$readme_text" == *'four deployed sites'* ]]
-[[ "$readme_text" == *'two exclusive logical databases per site'* ]]
+[[ "$readme_text" == *'Redis allocates two'* && "$readme_text" == *'logical databases per site'* ]]
 [[ "$readme_text" == *'unchanged provisioning rerun'* ]]
 [[ "$readme_text" == *'Resource ownership and removal'* ]]
 [[ "$readme_text" == *'Ownership conflict'* ]]
