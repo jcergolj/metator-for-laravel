@@ -18,6 +18,13 @@ step_prerequisites() {
             return 1
         fi
     done
+    if [[ "$DATABASE_DRIVER" == mysql ]]; then
+        require_commands mariadb || return 1
+        sudo systemctl is-active --quiet mariadb || {
+            die 'MariaDB is not active'
+            return 1
+        }
+    fi
 
     prepare_deploy_user
     local step_file step_id
@@ -49,7 +56,11 @@ prepare_shared_baseline() {
 
     require_commands apt-get apt-cache || return 1
     sudo apt-get update || return 1
-    sudo apt-get install -y ca-certificates composer git curl unzip openssh-client software-properties-common caddy || return 1
+    local shared_packages=(ca-certificates composer git curl unzip openssh-client software-properties-common caddy)
+    if [[ "$DATABASE_DRIVER" == mysql ]]; then
+        shared_packages+=(mariadb-server "php${PHP_VERSION}-mysql")
+    fi
+    sudo apt-get install -y "${shared_packages[@]}" || return 1
 
     if ! apt-cache show "php${PHP_VERSION}-fpm" >/dev/null 2>&1; then
         sudo add-apt-repository -y ppa:ondrej/php || return 1
@@ -62,5 +73,8 @@ prepare_shared_baseline() {
         "php${PHP_VERSION}-bcmath" "php${PHP_VERSION}-sqlite3" || return 1
 
     sudo systemctl enable --now "php${PHP_VERSION}-fpm" || return 1
+    if [[ "$DATABASE_DRIVER" == mysql ]]; then
+        sudo systemctl enable --now mariadb || return 1
+    fi
     ok "Shared PHP ${PHP_VERSION} baseline is ready"
 }
