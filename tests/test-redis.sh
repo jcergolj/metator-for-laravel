@@ -4,7 +4,7 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 step_text="$(<"$ROOT_DIR/stubs/scripts/steps/05-redis.sh")"
-install_text="$(<"$ROOT_DIR/src/Commands/InstallDeployerScaffoldingCommand.php")"
+install_text="$(<"$ROOT_DIR/src/Commands/InstallationPrompts.php")"
 bootstrap_text="$(<"$ROOT_DIR/stubs/scripts/server-bootstrap.sh")"
 
 [[ "$common_text" == *'REDIS_ALLOCATION_FILE'* ]]
