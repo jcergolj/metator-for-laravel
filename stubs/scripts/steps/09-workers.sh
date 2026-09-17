@@ -57,6 +57,7 @@ EOF
     fi
     if [[ "$changed" != true ]]; then
         rm -f "$temporary"
+        configure_worker_sudoers || return 1
         ok 'Supervisor worker configuration is already current'
         return
     fi
@@ -85,22 +86,26 @@ EOF
     fi
     [[ -z "$backup" ]] || rm -f "$backup"
 
-    local supervisorctl_path
-    supervisorctl_path="$(command -v supervisorctl)"
-    temporary="$(mktemp)"
-    cat > "$temporary" <<EOF
-# Managed by Metator: site_id=${SITE_ID}
-    ${DEPLOY_USER} ALL=(root) NOPASSWD: ${supervisorctl_path} update ${APP_NAME}-worker, ${supervisorctl_path} restart ${APP_NAME}-worker\:*, ${supervisorctl_path} status ${APP_NAME}-worker\:*
-EOF
-    if ! sudo cmp -s "$temporary" "$SUPERVISOR_SUDOERS_FILE"; then
-        sudo install -m 440 -o root -g root "$temporary" "$SUPERVISOR_SUDOERS_FILE"
-    fi
-    rm -f "$temporary"
+    configure_worker_sudoers || return 1
     if [[ "$USE_HORIZON" == true ]]; then
         ok 'Horizon Supervisor configuration is staged; deploy code before activation'
     else
         ok 'Queue worker Supervisor configuration is staged; deploy code before activation'
     fi
+}
+
+configure_worker_sudoers() {
+    local supervisorctl_path temporary
+    supervisorctl_path="$(command -v supervisorctl)"
+    temporary="$(mktemp)"
+    cat > "$temporary" <<EOF
+# Managed by Metator: site_id=${SITE_ID}
+${DEPLOY_USER} ALL=(root) NOPASSWD: ${supervisorctl_path} update ${APP_NAME}-worker, ${supervisorctl_path} restart ${APP_NAME}-worker\:*, ${supervisorctl_path} status ${APP_NAME}-worker\:*
+EOF
+    if ! sudo cmp -s "$temporary" "$SUPERVISOR_SUDOERS_FILE"; then
+        sudo install -m 440 -o root -g root "$temporary" "$SUPERVISOR_SUDOERS_FILE" || { rm -f "$temporary"; return 1; }
+    fi
+    rm -f "$temporary"
 }
 
 reconcile_disabled_workers() {
