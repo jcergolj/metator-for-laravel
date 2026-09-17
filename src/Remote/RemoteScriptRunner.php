@@ -9,6 +9,8 @@ use RuntimeException;
 
 class RemoteScriptRunner
 {
+    public const GITHUB_KEY_REGISTRATION_REQUIRED = 75;
+
     public function __construct(
         protected Filesystem $files,
     ) {

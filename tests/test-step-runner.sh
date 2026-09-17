@@ -89,4 +89,11 @@ run_selected_steps >"$output_file"
 [[ "$(<"$output_file")" != *Skipped:* ]]
 [[ "${#STEP_SUCCESSFUL[@]}" == 2 ]]
 
+step_registration() { return 75; }
+status=0
+run_step 'GitHub registration' 'Register key' step_registration >"$output_file" || status=$?
+[[ "$status" == 75 ]]
+[[ "${#STEP_FAILED[@]}" == 0 ]]
+[[ "$(<"$output_file")" == *'Waiting for local confirmation'* ]]
+
 printf '%s\n' 'Step runner checks passed.'

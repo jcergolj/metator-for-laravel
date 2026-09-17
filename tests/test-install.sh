@@ -45,7 +45,7 @@ permissions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/06-permissions.sh")"
 [[ "$common_stub" != *'sed -i "s|^${key}=.*'* ]]
 [[ "$workers_stub" == *'--timeout=60'* ]]
 [[ "$workers_stub" == *'autostart=false'* ]]
-[[ "$workers_stub" == *'supervisord -t'* ]]
+[[ "$workers_stub" == *'supervisorctl -c /etc/supervisor/supervisord.conf reread'* ]]
 [[ "$workers_stub" == *'SUPERVISOR_SUDOERS_FILE'* ]]
 [[ "$permissions_stub" == *'chmod 2770'* ]]
 [[ "$permissions_stub" == *'chmod 660'* ]]

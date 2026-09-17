@@ -152,6 +152,10 @@ run_step() {
         STEP_SUCCESSFUL+=("STEP ${step_number} - ${title}")
         return
     fi
+    if [[ "$status" -eq 75 ]]; then
+        warn "Waiting for local confirmation: $title"
+        return "$status"
+    fi
     STEP_FAILED+=("STEP ${step_number} - ${title} (exit status ${status})")
     warn "Step failed: $title"
     return "$status"
