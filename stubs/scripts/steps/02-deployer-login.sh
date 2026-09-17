@@ -21,7 +21,13 @@ step_deployer_login() {
         return
     fi
 
-    prompt_value 'Paste your public SSH key' CLIENT_PUBLIC_KEY || return 1
+    if [[ -z "${CLIENT_PUBLIC_KEY:-}" ]]; then
+        if [[ ! -t 0 ]]; then
+            die 'No public SSH key was transferred. Refresh the generated scripts and retry provisioning.'
+            return 1
+        fi
+        prompt_value 'Paste your public SSH key' CLIENT_PUBLIC_KEY || return 1
+    fi
 
     if [[ ! "$CLIENT_PUBLIC_KEY" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521)[[:space:]]+ ]]; then
         die 'Public SSH key must start with ssh-ed25519, ssh-rsa, or ecdsa-sha2-*'

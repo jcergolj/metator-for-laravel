@@ -55,7 +55,7 @@ DATABASE_DRIVER='__DATABASE_DRIVER__'
 ENV_EXAMPLE_FILE="$SCRIPT_DIR/.env.example"
 
 PHP_VERSION='__PHP_VERSION__'
-if [[ "$PHP_VERSION" == __PHP_VERSION__ ]]; then
+if [[ "$PHP_VERSION" == __PHP_"VERSION__" ]]; then
     PHP_VERSION="$(systemctl list-unit-files --type=service --no-legend 2>/dev/null |
         sed -nE 's/^(php([0-9]+\.[0-9]+)-fpm)\.service.*/\2/p' | sort -V | tail -n 1)"
 fi
