@@ -186,33 +186,20 @@ done
 APP_FOLDER=/var/www/billing.app
 APP_NAME=billing.app
 
-# Scheduler updates preserve other jobs and comments, and abort on read errors.
+# Scheduler files are site-owned, explicit-versioned, and no-op safe.
 USE_SCHEDULER=true
-cat > "$TEST_DIR/crontab" <<'EOF'
-MAILTO=ops@example.com
-* * * * * cd /var/www/other/current && php artisan schedule:run >> /dev/null 2>&1
-# Keep cd /var/www/billing.app/current && php artisan schedule:run documented
-EOF
-cron_before="$(<"$TEST_DIR/crontab")"
-crontab() {
-    if [[ "$3" == -l ]]; then
-        if [[ "${CRON_READ_FAIL:-false}" == true ]]; then
-            printf 'permission denied\n' >&2
-            return 1
-        fi
-        cat "$TEST_DIR/crontab"
-    else
-        cp "$3" "$TEST_DIR/crontab"
-    fi
-}
+SCHEDULER_FILE="$TEST_DIR/cron.d/metator-billing.app"
+mkdir -p "$(dirname "$SCHEDULER_FILE")"
 step_scheduler
-[[ "$(<"$TEST_DIR/crontab")" == *"$cron_before"* ]]
-cron_after="$(<"$TEST_DIR/crontab")"
+grep -Fqx '# Managed by Metator: site_id=billing' "$SCHEDULER_FILE"
+grep -Fq '/usr/bin/php8.4 artisan schedule:run' "$SCHEDULER_FILE"
+grep -Fq 'if [ -f "/var/www/billing.app/current/artisan" ]' "$SCHEDULER_FILE"
+cron_after="$(<"$SCHEDULER_FILE")"
 step_scheduler
-[[ "$(<"$TEST_DIR/crontab")" == "$cron_after" ]]
-CRON_READ_FAIL=true
+[[ "$(<"$SCHEDULER_FILE")" == "$cron_after" ]]
+printf '%s\n' '# Managed by Metator: site_id=other' > "$SCHEDULER_FILE"
 if step_scheduler; then exit 1; fi
-[[ "$(<"$TEST_DIR/crontab")" == "$cron_after" ]]
+[[ "$(<"$SCHEDULER_FILE")" == '# Managed by Metator: site_id=other' ]]
 
 # The complete bootstrap must serialize shared-file updates across applications.
 bootstrap="$(<"$ROOT_DIR/stubs/scripts/server-bootstrap.sh")"

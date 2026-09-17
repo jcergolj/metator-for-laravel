@@ -32,6 +32,12 @@ step_prerequisites() {
             return 1
         }
     fi
+    if [[ "$USE_SCHEDULER" == true ]]; then
+        sudo systemctl is-active --quiet cron || {
+            die 'Cron is not active'
+            return 1
+        }
+    fi
 
     prepare_deploy_user
     local step_file step_id
@@ -70,6 +76,9 @@ prepare_shared_baseline() {
     if [[ "$USE_REDIS" == true ]]; then
         shared_packages+=(redis-server)
     fi
+    if [[ "$USE_SCHEDULER" == true ]]; then
+        shared_packages+=(cron)
+    fi
     sudo apt-get install -y "${shared_packages[@]}" || return 1
 
     if ! apt-cache show "php${PHP_VERSION}-fpm" >/dev/null 2>&1; then
@@ -96,6 +105,9 @@ prepare_shared_baseline() {
     fi
     if [[ "$USE_REDIS" == true ]]; then
         sudo systemctl enable --now redis-server || return 1
+    fi
+    if [[ "$USE_SCHEDULER" == true ]]; then
+        sudo systemctl enable --now cron || return 1
     fi
     ok "Shared PHP ${PHP_VERSION} baseline is ready"
 }

@@ -59,6 +59,7 @@ APP_NAME="$SITE_ID"
 configure_github_identity
 CADDY_SITE="/etc/caddy/sites-enabled/${APP_NAME}.caddy"
 SUPERVISOR_FILE="/etc/supervisor/conf.d/${APP_NAME}-worker.conf"
+SCHEDULER_FILE="/etc/cron.d/metator-${APP_NAME}"
 REDIS_ALLOCATION_FILE='/var/lib/metator/redis-allocations.tsv'
 
 echo

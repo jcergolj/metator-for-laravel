@@ -11,33 +11,42 @@ step_scheduler() {
         return
     fi
 
-    local cron_job="* * * * * cd ${APP_FOLDER}/current && php artisan schedule:run >> /dev/null 2>&1"
-    local current_crontab temporary errors
-    current_crontab="$(mktemp)"
+    local scheduler_file="${SCHEDULER_FILE:-/etc/cron.d/metator-${SITE_ID}}"
+    local php_binary="/usr/bin/php${PHP_VERSION}"
+    local temporary
     temporary="$(mktemp)"
-    errors="$(mktemp)"
-    if ! LC_ALL=C sudo crontab -u www-data -l 2> "$errors" | tee "$current_crontab" >/dev/null; then
-        if ! grep -qxF 'no crontab for www-data' "$errors"; then
-            cat "$errors" >&2
-            rm -f "$current_crontab" "$temporary" "$errors"
-            die 'Cannot read the shared crontab; leaving it unchanged'
+    cat > "$temporary" <<EOF
+# Managed by Metator: site_id=${SITE_ID}
+* * * * * www-data if [ -f "${APP_FOLDER}/current/artisan" ]; then cd "${APP_FOLDER}/current" && ${php_binary} artisan schedule:run >> /dev/null 2>&1; fi
+EOF
+
+    if ! grep -Eq '^\* \* \* \* \* www-data if \[ -f ".*/current/artisan" \]; then cd ".*/current" && .*/php[0-9]+\.[0-9]+ artisan schedule:run >> /dev/null 2>&1; fi$' "$temporary"; then
+        rm -f "$temporary"
+        die 'Generated scheduler entry failed validation'
+        return 1
+    fi
+    if sudo test -e "$scheduler_file"; then
+        if ! sudo grep -qxF "# Managed by Metator: site_id=${SITE_ID}" "$scheduler_file" ||
+            ! sudo cmp -s "$temporary" "$scheduler_file"; then
+            rm -f "$temporary"
+            die "Scheduler file is not owned by site ${SITE_ID}: ${scheduler_file}"
             return 1
         fi
-    fi
-    rm -f "$errors"
-    grep -Fxv "$cron_job" "$current_crontab" > "$temporary" || true
-    echo "$cron_job" >> "$temporary"
-    if sudo cmp -s "$current_crontab" "$temporary"; then
-        rm -f "$current_crontab" "$temporary"
+        rm -f "$temporary"
+        record_site_scheduler || return 1
         ok 'Scheduler entry is already current'
-
         return
     fi
-    sudo crontab -u www-data "$temporary" || {
-        rm -f "$current_crontab" "$temporary"
+
+    sudo install -d -m 755 -o root -g root "$(dirname "$scheduler_file")" || {
+        rm -f "$temporary"
         return 1
     }
-    rm -f "$current_crontab"
+    sudo install -m 644 -o root -g root "$temporary" "$scheduler_file" || {
+        rm -f "$temporary"
+        return 1
+    }
     rm -f "$temporary"
-    ok 'Exactly one scheduler entry is configured'
+    record_site_scheduler || return 1
+    ok "Scheduler entry is configured at ${scheduler_file}"
 }
