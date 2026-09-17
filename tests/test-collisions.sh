@@ -160,7 +160,7 @@ step_shared_env <<< ''
 # Failed Caddy validation restores both shared and application configuration.
 mkdir -p "$TEST_DIR/etc/caddy/sites-enabled"
 printf '# Existing shared configuration\n' > "$TEST_DIR/etc/caddy/Caddyfile"
-printf 'previous app configuration\n' > "$TEST_DIR/etc/caddy/sites-enabled/billing.app.caddy"
+printf '# Managed by Metator: site_id=billing domain=example.com\nprevious app configuration\n' > "$TEST_DIR/etc/caddy/sites-enabled/billing.app.caddy"
 printf 'another site\n' > "$TEST_DIR/etc/caddy/sites-enabled/other.caddy"
 CADDY_CERT="$TEST_DIR/cert"
 CADDY_KEY="$TEST_DIR/key"
@@ -169,7 +169,7 @@ PHP_FPM_SOCKET=/run/php/php8.4-fpm.sock
 touch "$CADDY_CERT" "$CADDY_KEY"
 if step_caddy </dev/null; then exit 1; fi
 [[ "$(<"$TEST_DIR/etc/caddy/Caddyfile")" == '# Existing shared configuration' ]]
-[[ "$(<"$TEST_DIR/etc/caddy/sites-enabled/billing.app.caddy")" == 'previous app configuration' ]]
+[[ "$(<"$TEST_DIR/etc/caddy/sites-enabled/billing.app.caddy")" == $'# Managed by Metator: site_id=billing domain=example.com\nprevious app configuration' ]]
 [[ "$(<"$TEST_DIR/etc/caddy/sites-enabled/other.caddy")" == 'another site' ]]
 
 # New applications receive distinct shared Redis/cache/Horizon namespaces.

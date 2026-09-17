@@ -165,6 +165,13 @@ when installing, and no Cloudflare credentials or DNS API calls will be needed.
 The web server step remains independent, so Caddy or Nginx can be used with or
 without Cloudflare.
 
+Caddy obtains and renews the site's public HTTPS certificate itself. Before
+provisioning, create DNS records for the configured domain that point to the
+server and allow inbound HTTP and HTTPS traffic. A successful Metator run means
+the server infrastructure and Caddy route are ready; it does not mean that
+application code has been deployed or that the domain is already serving a
+working Laravel response.
+
 ## Changing the generated pipeline
 
 The first install creates the selected pipeline. Running the command again
