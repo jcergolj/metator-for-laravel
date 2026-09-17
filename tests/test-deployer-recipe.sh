@@ -2,12 +2,10 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMMAND_FILE="$ROOT_DIR/src/Commands/InstallDeployerScaffoldingCommand.php"
 PROMPTS_FILE="$ROOT_DIR/src/Commands/InstallationPrompts.php"
 DEPLOY_STUB="$ROOT_DIR/stubs/deploy.php.stub"
 README="$ROOT_DIR/README.md"
 
-command_text="$(<"$COMMAND_FILE")"
 prompts_text="$(<"$PROMPTS_FILE")"
 deploy_text="$(<"$DEPLOY_STUB")"
 readme_text="$(<"$README")"
