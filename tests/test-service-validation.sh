@@ -58,6 +58,7 @@ sudo() {
     command "$executable" "${arguments[@]}"
 }
 
+# shellcheck disable=SC2032
 supervisorctl() { :; }
 
 SITE_ID=billing
