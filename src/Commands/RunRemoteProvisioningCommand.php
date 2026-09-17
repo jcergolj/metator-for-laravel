@@ -75,7 +75,7 @@ class RunRemoteProvisioningCommand extends Command
             || ! is_string($site['ssh']['user'] ?? null) || ! is_string($site['ssh']['host'] ?? null)) {
             throw new RuntimeException('Site configuration must define site_id and ssh.user/ssh.host.');
         }
-        if (preg_match('/^[a-z](?:[a-z0-9]|-(?=[a-z0-9])){0,23}$/', $site['site_id']) !== 1
+        if (preg_match('/^[a-z](?:[a-z0-9]|-(?=[a-z0-9])){0,31}$/', $site['site_id']) !== 1
             || preg_match('/^[A-Za-z_][A-Za-z0-9_-]*$/', $site['ssh']['user']) !== 1
             || preg_match('/^[A-Za-z0-9.-]+$/', $site['ssh']['host']) !== 1) {
             throw new RuntimeException('Site ID or SSH target contains unsafe characters.');

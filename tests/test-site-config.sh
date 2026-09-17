@@ -14,6 +14,8 @@ writer_text="$(<"$WRITER_FILE")"
 [[ "$prompts_text" == *"Site ID"* ]]
 [[ "$prompts_text" == *"suggestedSiteId"* ]]
 [[ "$prompts_text" == *"default: \$suggestedSiteId"* ]]
+[[ "$prompts_text" == *"\$environment.'-'.\$name"* ]]
+[[ "$prompts_text" == *'strlen($value) <= 32'* ]]
 [[ "$prompts_text" == *"'__DEPLOY_PATH__' => '/var/www/'.\$siteId"* ]]
 [[ "$prompts_text" == *"'__GIT_DEPLOYER_NAME__' => 'git-'.\$siteId"* ]]
 [[ "$writer_text" == *"php_version"* ]]

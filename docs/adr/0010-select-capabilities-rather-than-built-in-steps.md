@@ -1,0 +1,3 @@
+# Select capabilities rather than individual built-in steps
+
+Operators select site capabilities such as database, Redis, worker mode, and scheduler instead of choosing individual built-in shell steps. Metator resolves the required operations and their ordering, always performing applicable ownership, permission, and validation operations; this avoids incomplete pipelines that require operators to know implementation dependencies. Custom shell steps remain an extension point executed as trusted operator code: Metator reports failures, while authors remain responsible for their effects on shared infrastructure.

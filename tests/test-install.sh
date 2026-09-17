@@ -18,6 +18,8 @@ common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 
 [[ "$prompts_text" == *'use function Laravel\Prompts\text;'* ]]
 [[ "$prompts_text" == *"'Server IP address'"* ]]
+[[ "$prompts_text" == *"\$environment.'-'.\$name"* ]]
+[[ "$prompts_text" == *'1-32 lowercase letters'* ]]
 [[ "$prompts_text" != *"'Git SSH deployer name'"* ]]
 [[ "$prompts_text" == *"'__GIT_DEPLOYER_NAME__' => 'git-'.\$siteId"* ]]
 [[ "$prompts_text" == *'use function Laravel\Prompts\multiselect;'* ]]
@@ -44,7 +46,7 @@ permissions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/06-permissions.sh")"
 [[ "$common_stub" != *'sed -i "s|^${key}=.*'* ]]
 [[ "$workers_stub" == *'--timeout=60'* ]]
 [[ "$workers_stub" == *'autostart=false'* ]]
-[[ "$workers_stub" == *'supervisord -t'* ]]
+[[ "$workers_stub" == *'supervisorctl -c /etc/supervisor/supervisord.conf reread'* ]]
 [[ "$workers_stub" == *'SUPERVISOR_SUDOERS_FILE'* ]]
 [[ "$permissions_stub" == *'chmod 2770'* ]]
 [[ "$permissions_stub" == *'chmod 660'* ]]

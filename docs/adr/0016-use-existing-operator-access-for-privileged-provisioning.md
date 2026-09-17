@@ -1,0 +1,3 @@
+# Use existing operator access for privileged provisioning
+
+Artisan connects through the operator SSH account configured for the selected site using existing SSH authentication and requires noninteractive administrative access, verified before provisioning changes begin. The provisioning operator is distinct from the shared deployment account; existing root SSH access may be used when available but is not required. Metator neither enables root SSH login nor stores sudo passwords, keeping administrative access preparation outside its provisioning scope while supporting unattended remote execution.

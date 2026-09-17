@@ -47,4 +47,22 @@ status="${status:-0}"
 [[ "${STEP_FAILED[*]}" == *'Optional step (exit status 37)'* ]]
 [[ "$(<"$output_file")" != *'after-ran'* ]]
 
+SCRIPT_DIR="$TEST_DIR"
+METATOR_OPERATION=prepare-server
+STEP_SUCCESSFUL=()
+STEP_FAILED=()
+STEP_SKIPPED=()
+step_number=0
+status=0
+run_selected_steps >/dev/null 2>&1 || status=$?
+[[ "$status" == 0 ]]
+print_step_summary >"$output_file"
+[[ "$(<"$output_file")" != *'Skipped:'* ]]
+
+STEP_SUCCESSFUL=('STEP 1 - Required step')
+STEP_FAILED=('STEP 3 - Failed step (exit status 1)')
+STEP_SKIPPED=('STEP 2 - Optional step')
+print_step_summary >"$output_file"
+[[ "$(<"$output_file")" == *'Skipped:'* ]]
+
 printf '%s\n' 'Step runner checks passed.'

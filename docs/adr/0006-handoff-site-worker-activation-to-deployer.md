@@ -1,0 +1,3 @@
+# Hand site worker activation to Deployer after release activation
+
+Metator prepares and validates site-owned Supervisor configuration and the narrowly scoped permissions required by deployment hooks, while keeping a new site's workers inactive until its first release is available. After activating that release, Deployer activates only the site's worker group; later deployments gracefully restart that site's workers against the new release. Deployment hooks must neither run an unqualified Supervisor update nor restart the shared Supervisor service, keeping provisioning with Metator and release lifecycle coordination with Deployer.

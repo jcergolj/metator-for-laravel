@@ -11,7 +11,7 @@ step_workers() {
         reconcile_disabled_workers
         return
     fi
-    require_commands supervisorctl supervisord || return 1
+    require_commands supervisorctl || return 1
     sudo systemctl is-active --quiet supervisor || {
         die 'Supervisor is not active; run prepare-server before provisioning workers'
         return 1
@@ -68,7 +68,12 @@ EOF
     fi
     sudo install -m 644 -o root -g root "$temporary" "$SUPERVISOR_FILE"
     rm -f "$temporary"
-    if ! sudo supervisord -t; then
+    # reread validates through the running daemon without activating worker changes.
+    # Supervisor can report an RPC validation ERROR while exiting successfully.
+    local validation_output validation_status=0
+    validation_output="$(sudo supervisorctl -c /etc/supervisor/supervisord.conf reread 2>&1)" || validation_status=$?
+    printf '%s\n' "$validation_output"
+    if [[ "$validation_status" -ne 0 || "$validation_output" == *ERROR* ]]; then
         if [[ -n "$backup" ]]; then
             sudo cp -p "$backup" "$SUPERVISOR_FILE"
         else

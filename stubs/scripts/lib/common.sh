@@ -178,8 +178,8 @@ print_step_summary() {
     echo 'Step summary'
     print_step_group 'Performed successfully:' "${STEP_SUCCESSFUL[@]}"
     print_step_group 'Failed:' "${STEP_FAILED[@]}"
-    print_step_group 'Skipped:' "${STEP_SKIPPED[@]}"
     if [[ "${#STEP_FAILED[@]}" -gt 0 ]]; then
+        print_step_group 'Skipped:' "${STEP_SKIPPED[@]}"
         warn 'Selected steps failed. Correct the failures and rerun the bootstrap.'
     fi
 }
@@ -256,8 +256,8 @@ run_selected_steps() {
 require_safe_inputs() {
     [[ "$GITHUB_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] ||
         { die 'GitHub repository must look like owner/repository'; return 1; }
-    [[ "${#SITE_ID}" -le 24 && "$SITE_ID" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]] ||
-        { die 'Site ID must be 1-24 lowercase letters or digits with single hyphens'; return 1; }
+    [[ "${#SITE_ID}" -le 32 && "$SITE_ID" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]] ||
+        { die 'Site ID must be 1-32 lowercase letters or digits with single hyphens'; return 1; }
     [[ "$APP_FOLDER" =~ ^/var/www/[A-Za-z0-9_.-]+$ && "$APP_FOLDER" != /var/www/. && "$APP_FOLDER" != /var/www/.. ]] ||
         { die 'Application folder must be a simple path under /var/www'; return 1; }
     [[ "$APP_FOLDER" == "/var/www/${SITE_ID}" ]] ||

@@ -110,6 +110,7 @@ fi
 
 echo
 ok 'Server setup finished'
-echo 'The current symlink has not been created by this script.'
-echo 'Perform the first deployment from your local project with:'
-echo '  vendor/bin/dep deploy production'
+if [[ "$METATOR_OPERATION" == prepare-server ]]; then
+    echo 'Next step: provision the selected site with:'
+    echo '  php artisan metator:provision --config=metator.production.php'
+fi

@@ -1,0 +1,3 @@
+# Allocate separate Redis cache and runtime-state databases per site
+
+Redis-enabled sites share one Redis service, but each receives two exclusively allocated logical databases: one for cache and another for queues, Horizon, and Redis-backed sessions, with site-specific prefixes and Laravel connection settings. Metator persists allocations and checks available capacity before provisioning; insufficient shared capacity requires explicit infrastructure preparation on occupied servers. This prevents a site's normal Laravel cache flush from deleting another site's cache or its own runtime state, at the cost of a finite logical-database allocation that provides operational isolation rather than containment of a compromised runtime.

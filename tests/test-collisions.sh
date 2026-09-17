@@ -131,6 +131,20 @@ printf 'site_id=%s\nrepository=%s\nphp_version=%s\ndatabase=%s\n' \
     "$SITE_ID" "$GITHUB_REPOSITORY" "$PHP_VERSION" "$DATABASE_DRIVER" \
     > "$TEST_DIR$APP_FOLDER/.metator-site"
 
+# Metadata with conventional whitespace must still identify the owning site.
+printf 'site_id = billing\ndomain = example.com\n' > "$TEST_DIR$APP_FOLDER/.metator-site"
+DOMAIN=example.com
+SITE_ID=other
+if step_caddy </dev/null; then exit 1; fi
+SITE_ID=billing
+
+# The same site ID cannot be silently moved to another application folder.
+APP_FOLDER=/var/www/moved
+mkdir -p "$TEST_DIR$APP_FOLDER"
+printf 'site_id= billing\ndomain=example.com\n' > "$TEST_DIR$APP_FOLDER/.metator-site"
+if step_caddy </dev/null; then exit 1; fi
+APP_FOLDER=/var/www/billing.app
+
 # A deployment folder belongs to one site, even across different aliases.
 claim_application_folder
 claim_application_folder
@@ -218,7 +232,6 @@ bootstrap="$(<"$ROOT_DIR/stubs/scripts/server-bootstrap.sh")"
 
 # Only this application's pending Supervisor changes should be applied.
 supervisorctl() { :; }
-supervisord() { :; }
 sudo() {
     [[ "${1:-}" != cmp ]] || return 1
     printf '%s\n' "$*" >> "$TEST_DIR/commands"
@@ -235,8 +248,8 @@ USE_HORIZON=false
 mkdir -p "$APP_FOLDER/current"
 touch "$APP_FOLDER/current/artisan"
 step_workers <<< ''
-if grep -q 'supervisorctl' "$TEST_DIR/commands"; then exit 1; fi
-grep -q 'supervisord -t' "$TEST_DIR/commands"
+grep -qx 'supervisorctl -c /etc/supervisor/supervisord.conf reread' "$TEST_DIR/commands"
+if grep -Eq 'supervisord |supervisorctl .* (update|restart|start)' "$TEST_DIR/commands"; then exit 1; fi
 
 # Disabling stops and removes only this site's owned worker configuration.
 SUPERVISOR_FILE="$TEST_DIR/billing-worker.conf"

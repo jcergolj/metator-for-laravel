@@ -1,0 +1,3 @@
+# Give each site its own MariaDB database and credentials
+
+When MariaDB is selected, Metator provisions a separate database and database user for each site, grants that user access only to its site's database, and generates a password stored in the site's Laravel environment. Reruns preserve data and credentials; existing databases or users are reused only when ownership identifies the requested site, otherwise provisioning stops. The MariaDB service remains shared, with missing shared capabilities subject to explicit infrastructure preparation on occupied servers; this favors predictable site ownership over automatic reuse of operator-supplied database resources.
