@@ -34,6 +34,7 @@ cat > "$TEST_DIR/steps/30-after.sh" <<'EOF'
 step_after() { printf 'after-ran\n'; }
 EOF
 SCRIPT_DIR="$TEST_DIR"
+METATOR_OPERATION=provision
 source "$ROOT_DIR/stubs/scripts/lib/common.sh"
 for step_file in "$TEST_DIR"/steps/*.sh; do
     source "$step_file"
