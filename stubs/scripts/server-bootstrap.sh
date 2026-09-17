@@ -27,6 +27,7 @@ require_commands systemctl sed sort tail
 
 GITHUB_REPOSITORY='__GITHUB_REPOSITORY__'
 APP_FOLDER='__DEPLOY_PATH__'
+SITE_ID='__SITE_ID__'
 DOMAIN='__DOMAIN__'
 SERVER_IP='__SERVER_IP__'
 CONFIGURE_DEPLOY_USER_LOGIN='__CONFIGURE_DEPLOY_USER_LOGIN__'
@@ -52,7 +53,7 @@ PHP_PACKAGE_PREFIX="php${PHP_VERSION}"
 
 require_safe_inputs
 
-APP_NAME="$(basename "$APP_FOLDER")"
+APP_NAME="$SITE_ID"
 configure_github_identity
 CADDY_SITE="/etc/caddy/sites-enabled/${APP_NAME}.caddy"
 SUPERVISOR_FILE="/etc/supervisor/conf.d/${APP_NAME}-worker.conf"

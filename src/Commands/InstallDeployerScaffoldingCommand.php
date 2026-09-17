@@ -109,16 +109,8 @@ class InstallDeployerScaffoldingCommand extends Command
 
         $placeholders = [
             '__APP_NAME__' => $project,
-            '__DEPLOY_PATH__' => text(
-                label: __('Application folder'),
-                default: '/var/www/'.$project,
-                required: true,
-                validate: function (string $value): ?string {
-                    return preg_match('#^/var/www/[A-Za-z0-9_.-]+$#', $value) !== 1
-                        ? __('Application folder must be a simple path under /var/www.')
-                        : null;
-                },
-            ),
+            '__DEPLOY_PATH__' => '/var/www/'.$siteId,
+            '__SITE_ID__' => $siteId,
             '__GITHUB_REPOSITORY__' => $repository,
             '__BRANCH__' => text(
                 label: __('Deployment branch'),

@@ -47,6 +47,9 @@ sudo() {
 
 APP_NAME=billing.app
 APP_FOLDER=/var/www/billing.app
+SITE_ID=billing
+PHP_VERSION=8.4
+DATABASE_DRIVER=sqlite
 GITHUB_ALIAS=billing-github
 GITHUB_REPOSITORY=acme/billing
 configure_github_identity
@@ -110,15 +113,28 @@ GITHUB_ALIAS=billing-github
 for APP_FOLDER in /var/www/. /var/www/..; do
     if require_safe_inputs; then exit 1; fi
 done
-APP_FOLDER=/var/www/billing.app
+APP_FOLDER=/var/www/billing
 require_safe_inputs
+APP_FOLDER=/var/www/billing.app
 
-# A deployment folder belongs to one repository, even across different aliases.
+# An unmarked deployment folder cannot be adopted.
+APP_FOLDER=/var/www/unmarked
+mkdir -p "$TEST_DIR$APP_FOLDER"
+if claim_application_folder; then exit 1; fi
+APP_FOLDER=/var/www/billing.app
+printf 'site_id=%s\nrepository=%s\nphp_version=%s\ndatabase=%s\n' \
+    "$SITE_ID" "$GITHUB_REPOSITORY" "$PHP_VERSION" "$DATABASE_DRIVER" \
+    > "$TEST_DIR$APP_FOLDER/.metator-site"
+
+# A deployment folder belongs to one site, even across different aliases.
 claim_application_folder
 claim_application_folder
 GITHUB_REPOSITORY=acme/another-repository
 if claim_application_folder; then exit 1; fi
 GITHUB_REPOSITORY=acme/billing
+PHP_VERSION=8.5
+if claim_application_folder; then exit 1; fi
+PHP_VERSION=8.4
 
 # Existing protected environment/database files must not be truncated.
 printf 'APP_KEY=keep-me\nDB_CONNECTION=sqlite\n' > "$TEST_DIR$APP_FOLDER/shared/.env"
@@ -132,6 +148,9 @@ EDITOR=true
 [[ "$(<"$TEST_DIR$APP_FOLDER/shared/.env")" == *APP_KEY=keep-me* ]]
 step_database
 [[ "$(<"$TEST_DIR$APP_FOLDER/shared/database/database.sqlite")" == 'existing database bytes' ]]
+environment_before="$(<"$TEST_DIR$APP_FOLDER/shared/.env")"
+step_shared_env <<< ''
+[[ "$(<"$TEST_DIR$APP_FOLDER/shared/.env")" == "$environment_before" ]]
 
 # Failed Caddy validation restores both shared and application configuration.
 mkdir -p "$TEST_DIR/etc/caddy/sites-enabled"
@@ -152,8 +171,10 @@ if step_caddy </dev/null; then exit 1; fi
 APP_FOLDER=/var/www/new-app
 APP_NAME=new-app
 ENV_EXAMPLE_FILE="$TEST_DIR/example"
-printf 'APP_NAME=Laravel\nREDIS_PREFIX=laravel_\n' > "$ENV_EXAMPLE_FILE"
- step_shared_env <<< ''
+printf 'APP_NAME=Laravel\nAPP_ENV=local\nAPP_DEBUG=true\nREDIS_PREFIX=laravel_\n' > "$ENV_EXAMPLE_FILE"
+step_shared_env <<< ''
+grep -qx 'APP_ENV="production"' "$TEST_DIR$APP_FOLDER/shared/.env"
+grep -qx 'APP_DEBUG="false"' "$TEST_DIR$APP_FOLDER/shared/.env"
 for prefix in REDIS_PREFIX CACHE_PREFIX HORIZON_PREFIX; do
     grep -qx "${prefix}=\"metator_new-app_\"" "$TEST_DIR$APP_FOLDER/shared/.env"
 done

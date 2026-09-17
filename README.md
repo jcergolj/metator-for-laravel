@@ -179,8 +179,8 @@ The command tracks generated files in `scripts/.metator-manifest.json`. During a
 forced regeneration it removes only files listed in that manifest. Other files
 in `scripts/steps/` are preserved, so unrelated custom files are not deleted.
 
-The installer asks for the application folder, GitHub repository, server IP,
-domain, Git SSH name, database driver, and deployment steps. Existing generated
+The installer derives the application folder from the site ID, then asks for the
+GitHub repository, server IP, domain, Git SSH name, database driver, and deployment steps. Existing generated
 files are skipped; use `--force` to regenerate them.
 
 ## Bootstrap the server
@@ -198,14 +198,16 @@ confirming the bootstrap prompt.
 
 ## Multiple applications
 
-- Give every app a unique folder and Git SSH name. The SSH name is both the
-  GitHub alias and key filename under `/home/deployer/.ssh/`.
+- Give every site a unique site ID and Git SSH name. The site ID is the
+  immutable name for `/var/www/<site-id>` and all site-owned resources. The SSH
+  name is both the GitHub alias and key filename under `/home/deployer/.ssh/`.
 - Add each app's public key to its repository's GitHub deploy keys. Existing
   keys and unrelated blocks in the shared SSH config are preserved.
 - Run one bootstrap at a time; a server-wide lock prevents concurrent updates.
   Cron and Supervisor changes are scoped to the application.
-- `.metator-repository` prevents later reuse of an app folder by another
-  repository. Check existing unmarked folders before their first bootstrap.
+- `.metator-site` records the site ID, repository, PHP version, and database
+  selection. Existing unmarked folders and runtime changes are rejected before
+  provisioning changes them.
 - New environments get unique Redis/cache/Horizon prefixes. For existing apps
   sharing Redis, check `REDIS_PREFIX`, `CACHE_PREFIX`, and `HORIZON_PREFIX` are
   distinct and used by the app's configuration.
