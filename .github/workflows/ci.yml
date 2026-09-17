@@ -20,6 +20,8 @@ jobs:
           tools: composer
       - run: sudo apt-get update && sudo apt-get install --yes shellcheck
       - run: composer validate --no-check-publish
+      - run: composer install --no-interaction --prefer-dist
+      - run: php tests/test-remote-staging.php
       - run: find src -name '*.php' -print0 | xargs -0 -n1 php -l
       - run: find tests stubs/scripts -name '*.sh' -print0 | xargs -0 -n1 shellcheck -x
       - run: for test in tests/*.sh; do bash "$test"; done

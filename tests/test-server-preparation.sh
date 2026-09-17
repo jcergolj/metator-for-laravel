@@ -14,7 +14,7 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$bootstrap_text" == *"PHP_FPM_SERVICE=\"php\${PHP_VERSION}-fpm\""* ]]
 [[ "$bootstrap_text" == *'METATOR_OPERATION" != prepare-server'* ]]
 [[ "$bootstrap_text" == *"PHP_VERSION='8.4'"* ]]
-[[ "$bootstrap_text" == *'php artisan metator:provision --config=metator.production.php'* ]]
+[[ "$bootstrap_text" == *'php artisan metator:provision --config=__CONFIG_FILE__'* ]]
 [[ "$bootstrap_text" != *'vendor/bin/dep deploy production'* ]]
 [[ "$prerequisites_text" == *'prepare_shared_baseline'* ]]
 [[ "$prerequisites_text" == *'requires Ubuntu 24.04 or 26.04'* ]]
@@ -43,6 +43,6 @@ node_text="$(<"$ROOT_DIR/stubs/scripts/steps/11-node.sh")"
 [[ "$node_text" == *'apt-get install -y nodejs npm'* ]]
 [[ "$node_text" == *'require_commands node npm'* ]]
 [[ "$common_text" == *"\"\$METATOR_OPERATION\" == prepare-server"* ]]
-[[ "$common_text" == *"skip_step \"\$title\""* ]]
+[[ "$common_text" == *'prerequisites|node)'* ]]
 
 printf '%s\n' 'Server preparation checks passed.'

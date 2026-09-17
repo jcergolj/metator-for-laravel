@@ -23,7 +23,7 @@ readme_text="$(<"$ROOT_DIR/README.md")"
 [[ "$runner_text" == *'clientPublicKey()'* ]]
 [[ "$runner_text" == *"glob(\$home.'/.ssh/*.pub')"* ]]
 [[ "$runner_text" == *"proc_open"* ]]
-[[ "$runner_text" == *"archiveScripts(\$staging ?? \$scriptsPath"* ]]
+[[ "$runner_text" == *"archiveScripts(\$staging, \$archive"* ]]
 [[ "$provider_text" == *'PrepareServerCommand::class'* ]]
 [[ "$provider_text" == *'RunRemoteProvisioningCommand::class'* ]]
 [[ "$bootstrap_text" == *"METATOR_OPERATION=\"\${METATOR_OPERATION:-provision}\""* ]]

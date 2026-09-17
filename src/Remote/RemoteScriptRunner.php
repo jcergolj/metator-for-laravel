@@ -21,25 +21,27 @@ class RemoteScriptRunner
         if ($archive === false) {
             throw new RuntimeException('Could not create a temporary script archive.');
         }
-        $archive .= '.tar.gz';
 
         $staging = null;
         try {
-            if ($environmentInput === null) {
-                $staging = $this->stageScripts($scriptsPath, $site, $operation);
-                $staging ??= sys_get_temp_dir().'/metator-staging-'.bin2hex(random_bytes(8));
-                $this->files->copyDirectory($scriptsPath, $staging);
-                $this->writeClientPublicKey($staging);
-                $this->archiveScripts($staging ?? $scriptsPath, $archive);
-            } else {
-                $staging = sys_get_temp_dir().'/metator-staging-'.bin2hex(random_bytes(8));
-                $this->files->copyDirectory($scriptsPath, $staging);
-                $this->files->copy($environmentInput, $staging.'/.env-input');
-                if ($operation === 'provision') {
-                    $this->writeCloudflareSecrets($staging, $site);
-                }
-                $this->archiveScripts($staging, $archive);
+            if (! is_file($scriptsPath.'/server-bootstrap.sh')) {
+                throw new RuntimeException('Generated scripts are missing. Run metator:install first.');
             }
+            $staging = sys_get_temp_dir().'/metator-staging-'.bin2hex(random_bytes(8));
+            if (! $this->files->copyDirectory($scriptsPath, $staging)) {
+                throw new RuntimeException('Could not stage the generated scripts.');
+            }
+            $this->files->delete([$staging.'/.client-public-key', $staging.'/.cloudflare.env', $staging.'/.env-input']);
+            if ($environmentInput !== null && ! $this->files->copy($environmentInput, $staging.'/.env-input')) {
+                throw new RuntimeException('Could not stage the environment input.');
+            }
+            if ($operation === 'provision') {
+                $this->writeCloudflareSecrets($staging, $site);
+                if (is_file($staging.'/steps/02-deployer-login.sh')) {
+                    $this->writeClientPublicKey($staging);
+                }
+            }
+            $this->archiveScripts($staging, $archive);
             $target = $site['ssh']['user'].'@'.$site['ssh']['host'];
             $remoteArchive = '/tmp/metator-'.$site['site_id'].'.tar.gz';
             $status = $this->execute(
@@ -80,7 +82,9 @@ class RemoteScriptRunner
     {
         $home = getenv('HOME') ?: '';
         $paths = glob($home.'/.ssh/*.pub') ?: [];
-        usort($paths, static fn (string $left, string $right): int => str_starts_with($left, $home.'/.ssh/id_') ? -1 : (str_starts_with($right, $home.'/.ssh/id_') ? 1 : strcmp($left, $right)));
+        usort($paths, static fn (string $left, string $right): int =>
+            [str_starts_with(basename($left), 'id_') ? 0 : 1, $left]
+            <=> [str_starts_with(basename($right), 'id_') ? 0 : 1, $right]);
         foreach ($paths as $path) {
             if (is_file($path)) {
                 $key = trim((string) file_get_contents($path));
@@ -97,19 +101,6 @@ class RemoteScriptRunner
     {
         $this->files->put($staging.'/.client-public-key', $this->clientPublicKey().PHP_EOL);
         @chmod($staging.'/.client-public-key', 0600);
-    }
-
-    /** @param array<string, mixed> $site */
-    private function stageScripts(string $scriptsPath, array $site, string $operation): ?string
-    {
-        if ($operation !== 'provision' || ! isset($site['cloudflare'])) {
-            return null;
-        }
-        $staging = sys_get_temp_dir().'/metator-staging-'.bin2hex(random_bytes(8));
-        $this->files->copyDirectory($scriptsPath, $staging);
-        $this->writeCloudflareSecrets($staging, $site);
-
-        return $staging;
     }
 
     /** @param array<string, mixed> $site */

@@ -85,7 +85,9 @@ step_github_key() {
                 return 1
             }
         show_github_registration_guidance
-        read -r -p 'Press Enter after adding the key to GitHub: '
+        if [[ -t 0 ]]; then
+            read -r -p 'Press Enter after adding the key to GitHub: ' || return 1
+        fi
     elif ! sudo test -f "${GITHUB_KEY}.pub"; then
         die "Private key exists without its public key: ${GITHUB_KEY}.pub"
         return 1
