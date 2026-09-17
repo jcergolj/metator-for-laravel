@@ -4,22 +4,28 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMMAND_FILE="$ROOT_DIR/src/Commands/InstallDeployerScaffoldingCommand.php"
+PROMPTS_FILE="$ROOT_DIR/src/Commands/InstallationPrompts.php"
+CATALOGUE_FILE="$ROOT_DIR/src/Commands/StepCatalogue.php"
+WRITER_FILE="$ROOT_DIR/src/Commands/GeneratedFileWriter.php"
 
 command_text="$(<"$COMMAND_FILE")"
+prompts_text="$(<"$PROMPTS_FILE")"
+catalogue_text="$(<"$CATALOGUE_FILE")"
+writer_text="$(<"$WRITER_FILE")"
 deploy_stub="$(<"$ROOT_DIR/stubs/deploy.php.stub")"
 instructions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/10-deployer-instructions.sh")"
 common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 
-[[ "$command_text" == *'use function Laravel\Prompts\text;'* ]]
-[[ "$command_text" == *"'Server IP address'"* ]]
-[[ "$command_text" != *"'Git SSH deployer name'"* ]]
-[[ "$command_text" == *"'__GIT_DEPLOYER_NAME__' => 'git-'.\$siteId"* ]]
-[[ "$command_text" == *'use function Laravel\Prompts\multiselect;'* ]]
-[[ "$command_text" == *'use function Laravel\Prompts\select;'* ]]
-[[ "$command_text" == *'Worker mode'* ]]
+[[ "$prompts_text" == *'use function Laravel\Prompts\text;'* ]]
+[[ "$prompts_text" == *"'Server IP address'"* ]]
+[[ "$prompts_text" != *"'Git SSH deployer name'"* ]]
+[[ "$prompts_text" == *"'__GIT_DEPLOYER_NAME__' => 'git-'.\$siteId"* ]]
+[[ "$prompts_text" == *'use function Laravel\Prompts\multiselect;'* ]]
+[[ "$prompts_text" == *'use function Laravel\Prompts\select;'* ]]
+[[ "$prompts_text" == *'Worker mode'* ]]
 [[ "$command_text" == *"metator/steps"* ]]
-[[ "$command_text" == *".metator-manifest.json"* ]]
-[[ "$command_text" != *github-deployer* ]]
+[[ "$writer_text" == *".metator-manifest.json"* ]]
+[[ "$prompts_text" != *github-deployer* ]]
 [[ "$deploy_stub" == *"\$site['ssh']['host']"* ]]
 [[ "$deploy_stub" == *"'git-'.\$siteId"* ]]
 [[ "$deploy_stub" == *"set('worker_type', \$workerType);"* ]]
@@ -29,8 +35,7 @@ common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$instructions_stub" == *'deploy.php already terminates Horizon'* ]]
 [[ "$instructions_stub" != *'Deploy with WORKER_TYPE=queue'* ]]
 [[ "$common_stub" == *"__GIT_DEPLOYER_NAME__"* ]]
-[[ "$command_text" == *".env.example"* ]]
-[[ "$command_text" == *"\$basePath.'/.env.example'"* ]]
+[[ "$prompts_text" == *".env.example"* ]]
 [[ "$command_text" == *'Missing application .env.example'* ]]
 deploy_stub_text="$(<"$ROOT_DIR/stubs/deploy.php.stub")"
 workers_stub="$(<"$ROOT_DIR/stubs/scripts/steps/09-workers.sh")"
@@ -47,8 +52,8 @@ permissions_stub="$(<"$ROOT_DIR/stubs/scripts/steps/06-permissions.sh")"
 [[ "$deploy_stub_text" == *"after('deploy:symlink', 'deploy:activate-workers')"* ]]
 [[ "$(<"$ROOT_DIR/stubs/scripts/steps/07-caddy.sh")" == *'# @group: web-server'* ]]
 [[ "$common_stub" == *'run_selected_steps'* ]]
-[[ "$command_text" == *"metadata['required'] === 'true'"* ]]
-[[ "$command_text" == *'normalizedIds'* ]]
+[[ "$catalogue_text" == *"metadata['required'] === 'true'"* ]]
+[[ "$catalogue_text" == *'normalizedIds'* ]]
 [[ "$common_stub" == *'validate_step_metadata'* ]]
 [[ "$common_stub" == *'validate_step_functions'* ]]
 [[ "$(<"$ROOT_DIR/stubs/scripts/steps/02-cloudflare.sh")" == *'step_cloudflare()'* ]]
