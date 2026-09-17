@@ -5,7 +5,7 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 METATOR_OPERATION="${METATOR_OPERATION:-provision}"
 case "$METATOR_OPERATION" in
-    prepare-server|provision) ;;
+    prepare-server|provision|update-environment) ;;
     *) printf 'Unknown Metator operation: %s\n' "$METATOR_OPERATION" >&2; exit 1 ;;
 esac
 
@@ -54,6 +54,10 @@ PHP_FPM_SOCKET="/run/php/${PHP_FPM_SERVICE}.sock"
 PHP_PACKAGE_PREFIX="php${PHP_VERSION}"
 
 require_safe_inputs
+
+if [[ "$METATOR_OPERATION" == update-environment ]]; then
+    exec bash "$SCRIPT_DIR/environment-update.sh"
+fi
 
 APP_NAME="$SITE_ID"
 configure_github_identity

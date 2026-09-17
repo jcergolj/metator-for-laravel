@@ -303,13 +303,14 @@ set_env_value() {
     escaped="${escaped//\"/\\\"}"
     escaped="${escaped//\$/\\\$}"
     local desired="${key}=\"${escaped}\""
-    if sudo grep -Fxq "$desired" "$APP_FOLDER/shared/.env"; then
+    local env_file="${ENV_FILE:-$APP_FOLDER/shared/.env}"
+    if sudo grep -Fxq "$desired" "$env_file"; then
         return
     fi
-    if sudo grep -qE "^${key}=" "$APP_FOLDER/shared/.env"; then
+    if sudo grep -qE "^${key}=" "$env_file"; then
         temporary="$(mktemp)"
         source_file="$(mktemp)"
-        sudo sed -n '1,$p' "$APP_FOLDER/shared/.env" | tee "$source_file" >/dev/null
+        sudo sed -n '1,$p' "$env_file" | tee "$source_file" >/dev/null
         while IFS= read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == "$key="* ]]; then
                 printf '%s\n' "${key}=\"${escaped}\""
@@ -317,11 +318,11 @@ set_env_value() {
                 printf '%s\n' "$line"
             fi
         done < "$source_file" > "$temporary"
-        sudo cp "$temporary" "$APP_FOLDER/shared/.env"
+        sudo cp "$temporary" "$env_file"
         rm -f "$temporary" "$source_file"
     else
         printf '%s\n' "${key}=\"${escaped}\"" |
-            sudo tee -a "$APP_FOLDER/shared/.env" >/dev/null
+            sudo tee -a "$env_file" >/dev/null
     fi
     ENV_UPDATED=true
 }

@@ -197,6 +197,7 @@ class InstallDeployerScaffoldingCommand extends Command
         $targets = [
             'deploy.php.stub' => $basePath.'/deploy.php',
             'scripts/server-bootstrap.sh' => $basePath.'/scripts/server-bootstrap.sh',
+            'scripts/environment-update.sh' => $basePath.'/scripts/environment-update.sh',
             'scripts/lib/common.sh' => $basePath.'/scripts/lib/common.sh',
             'scripts/steps/10-deployer-instructions.sh' => $basePath.'/scripts/steps/10-deployer-instructions.sh',
         ];

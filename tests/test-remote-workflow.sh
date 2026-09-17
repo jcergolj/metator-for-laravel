@@ -10,6 +10,8 @@ bootstrap_text="$(<"$ROOT_DIR/stubs/scripts/server-bootstrap.sh")"
 readme_text="$(<"$ROOT_DIR/README.md")"
 
 [[ "$command_text" == *"metator:provision"* ]]
+[[ "$(<"$ROOT_DIR/src/Commands/UpdateEnvironmentCommand.php")" == *"metator:update-env"* ]]
+[[ "$(<"$ROOT_DIR/src/Commands/UpdateEnvironmentCommand.php")" == *"--input="* ]]
 [[ "$command_text" == *"--config="* ]]
 [[ "$command_text" == *'Choose exactly one site configuration'* ]]
 [[ "$command_text" == *'Inspect the server before retrying'* ]]
@@ -21,7 +23,8 @@ readme_text="$(<"$ROOT_DIR/README.md")"
 [[ "$provider_text" == *'PrepareServerCommand::class'* ]]
 [[ "$provider_text" == *'RunRemoteProvisioningCommand::class'* ]]
 [[ "$bootstrap_text" == *"METATOR_OPERATION=\"\${METATOR_OPERATION:-provision}\""* ]]
-[[ "$bootstrap_text" == *'prepare-server|provision)'* ]]
+[[ "$bootstrap_text" == *'prepare-server|provision|update-environment)'* ]]
+[[ "$bootstrap_text" == *'update-environment'* ]]
 [[ "$bootstrap_text" == *"METATOR_OPERATION"* ]]
 [[ "$readme_text" == *'metator:prepare-server --config=metator.production.php'* ]]
 [[ "$readme_text" == *'Provisioning does not run Deployer'* ]]

@@ -54,6 +54,11 @@ class RunRemoteProvisioningCommand extends Command
         return self::SUCCESS;
     }
 
+    protected function streamOutput(string $chunk, bool $error): void
+    {
+        $this->{$error ? 'error' : 'line'}(rtrim($chunk, "\r\n"));
+    }
+
     /** @return array<string, mixed> */
     protected function loadSite(): array
     {
