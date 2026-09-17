@@ -1,0 +1,3 @@
+# Initialize site environments from local inputs and preserve remote secrets
+
+Metator initializes production environment settings, generates the application key and database credentials, and supplies the site's Redis configuration. Application-specific values may be supplied through a local Git-ignored environment file; Artisan transfers secrets securely without printing them and highlights settings requiring operator review before first deployment, without claiming to infer every application's requirements. Ordinary provisioning reruns preserve the existing remote environment, application key, and credentials; changing application secrets requires an explicit environment-update action rather than remote interactive editing or implicit overwrites.

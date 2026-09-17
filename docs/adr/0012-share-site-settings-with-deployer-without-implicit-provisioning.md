@@ -1,0 +1,3 @@
+# Share site settings with Deployer without implicit provisioning
+
+A small Metator integration lets Deployer read the selected site configuration for the server address, deployment user, derived deployment path, repository, site-specific Git SSH alias, and site-scoped worker lifecycle hooks. This avoids divergent copies of site settings while leaving `deploy.php` editable and responsible for branch selection, builds, migrations, releases, and rollback. Deployment never implicitly runs provisioning; shared configuration does not merge Metator's infrastructure responsibility with Deployer's release lifecycle.

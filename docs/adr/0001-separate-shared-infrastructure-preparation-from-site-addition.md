@@ -1,0 +1,5 @@
+# Separate shared infrastructure preparation from site addition
+
+Metator provisions the initial shared stack on a fresh secured VPS, but adding a site to an occupied server reuses compatible shared infrastructure. If a required shared capability is missing, site addition stops before mutating the server and identifies the explicit Metator infrastructure-preparation operation required; it must not automatically install or upgrade shared packages. This trades a single uninterrupted add-site workflow for operational isolation, keeping potentially disruptive shared-infrastructure changes deliberate and within Metator's responsibility.
+
+The v1 interface exposes `php artisan metator:prepare-server --config=metator.production.php` for shared capabilities and `php artisan metator:provision --config=metator.production.php` for site resources. Server preparation shows proposed shared changes before applying them on an occupied server, preserves existing service configuration, and does not perform general OS upgrades. A fresh VPS requires both operations; adding a site whose shared requirements are already satisfied requires only site provisioning.

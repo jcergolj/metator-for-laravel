@@ -1,0 +1,3 @@
+# Target Ubuntu with PHP 8.4 or newer
+
+Metator v1 targets Ubuntu 24.04 LTS, matching the operator's current server, with PHP 8.4 as the minimum supported site PHP version and PHP 8.5 as the default for new sites. PHP 8.4 and 8.5 are the initial target branches; package-source selection and verification remain necessary for this baseline, and support for Ubuntu 26.04 and later PHP branches follows testing rather than being assumed. Neither the runtime requirement nor platform selection authorizes site provisioning to upgrade an existing server's operating system or change another site's PHP version.

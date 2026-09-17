@@ -86,13 +86,13 @@ final class InstallationPrompts
 
     private function validSiteId(string $value): bool
     {
-        return strlen($value) <= 24 && preg_match('/^[a-z](?:[a-z0-9]|-(?=[a-z0-9]))*$/', $value) === 1;
+        return strlen($value) <= 32 && preg_match('/^[a-z](?:[a-z0-9]|-(?=[a-z0-9]))*$/', $value) === 1;
     }
 
     private function suggestedSiteId(string $repository, string $environment): ?string
     {
         $name = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower((string) strrchr($repository, '/'))), '-');
-        $suggestion = $name.'-'.$environment;
+        $suggestion = $environment.'-'.$name;
         return $this->validSiteId($suggestion) ? $suggestion : null;
     }
 }

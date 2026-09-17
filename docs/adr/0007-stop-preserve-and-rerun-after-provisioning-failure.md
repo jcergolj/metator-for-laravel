@@ -1,0 +1,3 @@
+# Stop, preserve, and safely rerun after provisioning failure
+
+Provisioning stops at the first failed operation with a nonzero status, restores configuration changed by a failed activation, and reports completed work and recovery instructions without declaring the site ready. Successfully created site-owned resources and their ownership records are preserved so a rerun can reconcile them without regenerating credentials or keys, deleting data, or duplicating configuration. This favors recoverable provisioning over a full rollback that could destroy useful resources; readiness is reported only after all required checks pass.

@@ -7,13 +7,18 @@
 # @order: 70
 
 step_caddy() {
-    local metadata existing_domain existing_site_id
+    local metadata existing_domain existing_site_id metadata_app_folder
     for metadata in /var/www/*/.metator-site; do
         sudo test -f "$metadata" || continue
-        existing_domain="$(sudo sed -nE 's/^domain=(.*)$/\1/p' "$metadata" | sed -n '1p')"
-        existing_site_id="$(sudo sed -nE 's/^site_id=(.*)$/\1/p' "$metadata" | sed -n '1p')"
+        existing_domain="$(sudo sed -nE 's/^domain[[:space:]]*=[[:space:]]*(.*)[[:space:]]*$/\1/p' "$metadata" | sed -n '1p')"
+        existing_site_id="$(sudo sed -nE 's/^site_id[[:space:]]*=[[:space:]]*(.*)[[:space:]]*$/\1/p' "$metadata" | sed -n '1p')"
+        metadata_app_folder="$(dirname "$metadata")"
         if [[ "$existing_domain" == "$DOMAIN" && "$existing_site_id" != "$SITE_ID" ]]; then
             die "Domain is already assigned to site $existing_site_id: $DOMAIN"
+            return 1
+        fi
+        if [[ "$existing_site_id" == "$SITE_ID" && "$metadata_app_folder" != "$APP_FOLDER" ]]; then
+            die "Site ID is already assigned to another application folder: $existing_site_id"
             return 1
         fi
     done
@@ -52,7 +57,11 @@ ${DOMAIN} {
 EOF
 
     if sudo grep -qE '^[[:space:]]*import[[:space:]]+/etc/caddy/sites-enabled/\*\.caddy[[:space:]]*$' "$candidate_caddy"; then
-        sudo sed -i "s#^[[:space:]]*import[[:space:]]*/etc/caddy/sites-enabled/\\*\\.caddy[[:space:]]*$#import ${candidate_sites}/*.caddy#" "$candidate_caddy"
+        if ! sudo sed -i "s#^[[:space:]]*import[[:space:]]*/etc/caddy/sites-enabled/\\*\\.caddy[[:space:]]*\$#import ${candidate_sites}/*.caddy#" "$candidate_caddy"; then
+            rm -rf "$temporary"
+            die 'Could not prepare Caddy candidate imports; no live configuration was changed'
+            return 1
+        fi
     else
         printf '\nimport %s/*.caddy\n' "$candidate_sites" >> "$candidate_caddy"
     fi

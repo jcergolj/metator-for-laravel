@@ -1,0 +1,5 @@
+# Support site-specific PHP versions on shared servers
+
+Metator v1 supports sites selecting different supported PHP minor versions on the same Ubuntu server rather than enforcing one PHP version per server. Each site's CLI operations, scheduler, workers, and web-server FPM connection must use its explicitly selected version; site addition must not change another site's runtime or the server's default PHP alternative. Missing version-specific shared capabilities on an occupied server require explicit infrastructure preparation before site addition, and supported PHP branches remain subject to the PHP 8.4 minimum and package availability and compatibility testing.
+
+The PHP minor version is selected when creating a site. Ordinary v1 provisioning rejects a change to an existing site's PHP minor version before applying it, even when the requested version is already installed, because web traffic, workers, scheduler, CLI, and deployment settings require a coordinated runtime migration. Automated migration of existing sites between PHP minor versions is deferred beyond v1.
