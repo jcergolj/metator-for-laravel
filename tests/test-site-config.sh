@@ -25,6 +25,6 @@ writer_text="$(<"$WRITER_FILE")"
 [[ "$prompts_text" == *"metator."* && "$prompts_text" == *"configName"* ]]
 [[ "$writer_text" == *"var_export"* ]]
 [[ "$writer_text" != *"APP_KEY"* ]]
-[[ "$writer_text" == *"password"* && "$prompts_text" == *".local.php"* ]]
+[[ "$prompts_text" == *"password"* && "$prompts_text" == *".local.php"* ]]
 
 printf '%s\n' 'Local site configuration checks passed.'
