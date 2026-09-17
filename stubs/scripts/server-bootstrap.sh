@@ -51,9 +51,12 @@ if [[ "$PHP_VERSION" == __PHP_VERSION__ ]]; then
     PHP_VERSION="$(systemctl list-unit-files --type=service --no-legend 2>/dev/null |
         sed -nE 's/^(php([0-9]+\.[0-9]+)-fpm)\.service.*/\2/p' | sort -V | tail -n 1)"
 fi
-if [[ -z "$PHP_VERSION" ]]; then
-    die 'No PHP-FPM service was found'
+if [[ -z "$PHP_VERSION" && "$METATOR_OPERATION" != prepare-server ]]; then
+    die 'No PHP-FPM service was found; run prepare-server first'
     exit 1
+fi
+if [[ -z "$PHP_VERSION" ]]; then
+    PHP_VERSION='8.4'
 fi
 PHP_FPM_SERVICE="php${PHP_VERSION}-fpm"
 PHP_FPM_SOCKET="/run/php/${PHP_FPM_SERVICE}.sock"

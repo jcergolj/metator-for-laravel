@@ -10,6 +10,8 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$bootstrap_text" == *"SITE_ID='__SITE_ID__'"* ]]
 [[ "$bootstrap_text" == *'require_commands ssh-keyscan'* ]]
 [[ "$bootstrap_text" == *"PHP_FPM_SERVICE=\"php\${PHP_VERSION}-fpm\""* ]]
+[[ "$bootstrap_text" == *'METATOR_OPERATION" != prepare-server'* ]]
+[[ "$bootstrap_text" == *"PHP_VERSION='8.4'"* ]]
 [[ "$prerequisites_text" == *'prepare_shared_baseline'* ]]
 [[ "$prerequisites_text" == *'requires Ubuntu 24.04'* ]]
 [[ "$prerequisites_text" == *"php\${PHP_VERSION}-fpm"* ]]
@@ -23,6 +25,7 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$prerequisites_text" == *'cron is active'* || "$prerequisites_text" == *'Cron is not active'* ]]
 [[ "$prerequisites_text" == *'shared_packages+=(cron)'* ]]
 [[ "$prerequisites_text" == *'add-apt-repository -y ppa:ondrej/php'* ]]
+[[ "$prerequisites_text" == *'add-apt-repository is required'* ]]
 [[ "$common_text" == *"\"\$METATOR_OPERATION\" == prepare-server"* ]]
 [[ "$common_text" == *"skip_step \"\$title\""* ]]
 

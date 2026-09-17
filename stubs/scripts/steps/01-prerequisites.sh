@@ -92,6 +92,10 @@ prepare_shared_baseline() {
     sudo apt-get install -y "${shared_packages[@]}" || return 1
 
     if ! apt-cache show "php${PHP_VERSION}-fpm" >/dev/null 2>&1; then
+        if ! command -v add-apt-repository >/dev/null 2>&1; then
+            die 'add-apt-repository is required to install the selected PHP version'
+            return 1
+        fi
         sudo add-apt-repository -y ppa:ondrej/php || return 1
         sudo apt-get update || return 1
     fi
