@@ -222,6 +222,9 @@ supervisord() { :; }
 sudo() {
     [[ "${1:-}" != cmp ]] || return 1
     printf '%s\n' "$*" >> "$TEST_DIR/commands"
+    if [[ "${1:-}" == rm ]]; then
+        command rm "${@:2}"
+    fi
 }
 APP_FOLDER="$TEST_DIR/app"
 APP_NAME=billing
@@ -246,7 +249,7 @@ supervisorctl() { printf '%s\n' "$*" >> "$TEST_DIR/supervisor"; }
 USE_QUEUE=false
 step_workers
 [[ ! -e "$SUPERVISOR_FILE" && ! -e "$SUPERVISOR_SUDOERS_FILE" ]]
-grep -qx 'stop billing-worker:\*' "$TEST_DIR/supervisor"
+grep -Fqx 'stop billing-worker:*' "$TEST_DIR/supervisor"
 grep -qx 'reread' "$TEST_DIR/supervisor"
 grep -qx 'update' "$TEST_DIR/supervisor"
 [[ "$(<"$other_worker_file")" == '# Managed by Metator: site_id=other' ]]
