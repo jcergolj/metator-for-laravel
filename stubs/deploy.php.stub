@@ -18,6 +18,7 @@ set('branch', '__BRANCH__');
 set('keep_releases', 5);
 set('worker_type', $workerType);
 set('bin/php', $phpBinary);
+set('writable_dirs', ['shared/storage']);
 
 host('production')
     ->setHostname($site['ssh']['host'])
