@@ -23,7 +23,7 @@ fi
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/common.sh"
 
-require_commands systemctl sed sort tail
+require_commands ssh-keyscan systemctl sed sort tail
 
 GITHUB_REPOSITORY='__GITHUB_REPOSITORY__'
 APP_FOLDER='__DEPLOY_PATH__'

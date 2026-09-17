@@ -141,16 +141,7 @@ class InstallDeployerScaffoldingCommand extends Command
                         : null;
                 },
             ),
-            '__GIT_DEPLOYER_NAME__' => text(
-                label: __('Git SSH deployer name'),
-                default: 'deployer-github-'.$project,
-                required: true,
-                validate: function (string $value): ?string {
-                    return preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]*$/', $value) !== 1
-                        ? __('Use only letters, numbers, dots, underscores, and hyphens.')
-                        : null;
-                },
-            ),
+            '__GIT_DEPLOYER_NAME__' => 'git-'.$siteId,
             '__DOMAIN__' => text(
                 label: __('Production domain'),
                 required: true,
