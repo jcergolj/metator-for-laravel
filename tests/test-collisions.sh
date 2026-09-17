@@ -222,9 +222,9 @@ supervisord() { :; }
 sudo() {
     [[ "${1:-}" != cmp ]] || return 1
     printf '%s\n' "$*" >> "$TEST_DIR/commands"
-    if [[ "${1:-}" == rm ]]; then
-        command rm "${@:2}"
-    fi
+    case "${1:-}" in
+        grep|test|rm) command "$@" ;;
+    esac
 }
 APP_FOLDER="$TEST_DIR/app"
 APP_NAME=billing
