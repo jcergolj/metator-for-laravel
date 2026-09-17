@@ -201,6 +201,16 @@ printf '%s\n' '# Managed by Metator: site_id=other' > "$SCHEDULER_FILE"
 if step_scheduler; then exit 1; fi
 [[ "$(<"$SCHEDULER_FILE")" == '# Managed by Metator: site_id=other' ]]
 
+# Disabling removes only this site's owned scheduler entry and is a no-op when absent.
+printf '%s\n' '# Managed by Metator: site_id=billing' > "$SCHEDULER_FILE"
+USE_SCHEDULER=false
+step_scheduler
+[[ ! -e "$SCHEDULER_FILE" ]]
+step_scheduler
+printf '%s\n' '# Managed by Metator: site_id=other' > "$SCHEDULER_FILE"
+if step_scheduler; then exit 1; fi
+[[ "$(<"$SCHEDULER_FILE")" == '# Managed by Metator: site_id=other' ]]
+
 # The complete bootstrap must serialize shared-file updates across applications.
 bootstrap="$(<"$ROOT_DIR/stubs/scripts/server-bootstrap.sh")"
 [[ "$bootstrap" == *'flock -n'* ]]
@@ -212,6 +222,9 @@ supervisord() { :; }
 sudo() {
     [[ "${1:-}" != cmp ]] || return 1
     printf '%s\n' "$*" >> "$TEST_DIR/commands"
+    case "${1:-}" in
+        grep|test|rm) command "$@" ;;
+    esac
 }
 APP_FOLDER="$TEST_DIR/app"
 APP_NAME=billing
@@ -224,5 +237,25 @@ touch "$APP_FOLDER/current/artisan"
 step_workers <<< ''
 if grep -q 'supervisorctl' "$TEST_DIR/commands"; then exit 1; fi
 grep -q 'supervisord -t' "$TEST_DIR/commands"
+
+# Disabling stops and removes only this site's owned worker configuration.
+SUPERVISOR_FILE="$TEST_DIR/billing-worker.conf"
+SUPERVISOR_SUDOERS_FILE="$TEST_DIR/billing-worker.sudoers"
+other_worker_file="$TEST_DIR/other-worker.conf"
+printf '%s\n' '# Managed by Metator: site_id=other' > "$other_worker_file"
+printf '%s\n' '# Managed by Metator: site_id=billing' > "$SUPERVISOR_FILE"
+printf '%s\n' '# Managed by Metator: site_id=billing' > "$SUPERVISOR_SUDOERS_FILE"
+supervisorctl() { printf '%s\n' "$*" >> "$TEST_DIR/supervisor"; }
+USE_QUEUE=false
+step_workers
+[[ ! -e "$SUPERVISOR_FILE" && ! -e "$SUPERVISOR_SUDOERS_FILE" ]]
+grep -Fqx 'stop billing-worker:*' "$TEST_DIR/supervisor"
+grep -qx 'reread' "$TEST_DIR/supervisor"
+grep -qx 'update' "$TEST_DIR/supervisor"
+[[ "$(<"$other_worker_file")" == '# Managed by Metator: site_id=other' ]]
+step_workers
+printf '%s\n' '# Managed by Metator: site_id=other' > "$SUPERVISOR_FILE"
+if step_workers; then exit 1; fi
+[[ -e "$SUPERVISOR_FILE" ]]
 
 printf 'Shared-server collision checks passed.\n'
