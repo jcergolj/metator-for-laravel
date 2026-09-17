@@ -21,6 +21,7 @@ readme_text="$(<"$ROOT_DIR/README.md")"
 [[ "$runner_text" == *"METATOR_OPERATION"* ]]
 [[ "$runner_text" == *'CLIENT_PUBLIC_KEY='* ]]
 [[ "$runner_text" == *'clientPublicKey()'* ]]
+[[ "$runner_text" == *"glob(\$home.'/.ssh/*.pub')"* ]]
 [[ "$runner_text" == *"proc_open"* ]]
 [[ "$runner_text" == *"archiveScripts(\$staging ?? \$scriptsPath"* ]]
 [[ "$provider_text" == *'PrepareServerCommand::class'* ]]

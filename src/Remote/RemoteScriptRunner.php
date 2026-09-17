@@ -77,7 +77,9 @@ class RemoteScriptRunner
     private function clientPublicKey(): string
     {
         $home = getenv('HOME') ?: '';
-        foreach ([$home.'/.ssh/id_ed25519.pub', $home.'/.ssh/id_ecdsa.pub', $home.'/.ssh/id_rsa.pub'] as $path) {
+        $paths = glob($home.'/.ssh/*.pub') ?: [];
+        usort($paths, static fn (string $left, string $right): int => str_starts_with($left, $home.'/.ssh/id_') ? -1 : (str_starts_with($right, $home.'/.ssh/id_') ? 1 : strcmp($left, $right)));
+        foreach ($paths as $path) {
             if (is_file($path)) {
                 $key = trim((string) file_get_contents($path));
                 if (preg_match('/^(ssh-ed25519|ssh-rsa|ecdsa-sha2-[^ ]+)[[:space:]]+[^[:space:]]+/', $key) === 1) {
