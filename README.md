@@ -205,6 +205,11 @@ files are skipped; use `--force` to regenerate them.
 
 ## Bootstrap the server
 
+Metator v1 targets an already-secured Ubuntu 24.04 server with noninteractive
+operator administrative access. The supported PHP baseline is PHP 8.4 and 8.5
+side by side, with PHP 8.5 as the default for new sites. Basic OS hardening and
+operator SSH access are prerequisites, not Metator responsibilities.
+
 The remote Artisan commands upload the generated scripts and run them in their
 metadata order. The server must have PHP-FPM, Composer, Git, systemd, and
 `sudo` installed, plus noninteractive operator SSH access. The command prompts
@@ -255,6 +260,78 @@ finished.
 version and required base packages. `provision` reuses that prepared baseline;
 it does not install or upgrade shared packages.
 
+### First site
+
+Install one named, non-secret site configuration. The site ID is immutable and
+identifies the remote directory and owned resources; it is not derived again
+from a repository or checkout name.
+
+```bash
+php artisan metator:install
+php artisan metator:prepare-server --config=metator.production.php
+php artisan metator:provision --config=metator.production.php
+vendor/bin/dep deploy production
+```
+
+Register the generated read-only GitHub deploy key when the provisioning output
+requests it. Preparation is the explicit shared-infrastructure phase. The
+provisioning command prepares only the selected site's resources and never runs
+the first deployment. Invoke Deployer separately, as shown above, then verify
+the configured HTTPS URL, database access, selected scheduler, and selected
+queue or Horizon worker.
+
+### Additional sites
+
+Create a second named configuration even when it uses the same repository. Give
+it a different site ID and select its own PHP version, database, Redis, worker,
+and scheduler capabilities. Run `prepare-server` only when the shared baseline
+needs a capability that is not ready; otherwise provision and deploy the new
+site directly:
+
+```bash
+php artisan metator:install
+php artisan metator:provision --config=metator.billing.php
+vendor/bin/dep deploy production
+```
+
+For the existing-server scenario, keep four deployed sites serving requests and
+processing their configured work while adding and separately deploying a fifth.
+Confirm that compatible shared packages are reused, unrelated workers are not
+restarted, existing domains remain available, and each site's configuration,
+credentials, deploy keys, data, and running work are unchanged. Sites sharing a
+repository must still have separate site directories and owned resource names.
+
+### Capability choices
+
+Each installation selects capabilities rather than a built-in deployment
+workflow. SQLite uses the site's shared database file; local MariaDB creates a
+site-owned database, user, and preserved credentials. Redis allocates two
+exclusive logical databases per site, one for cache and one for runtime state.
+Select no workers, queue workers, or Horizon, and select the scheduler only when
+the application uses it. Caddy provides automatic public HTTPS; Cloudflare DNS
+is optional and does not replace Caddy. Custom certificates, Nginx, and frontend
+build tooling are not v1 prerequisites.
+
+### Retries and changes
+
+An unchanged provisioning rerun verifies existing resources and reports them as
+unchanged without rewriting configuration, rotating credentials or keys,
+reloading shared services, restarting unrelated workers, or duplicating cron
+entries. A failed step returns a nonzero status and the summary does not claim
+readiness. Correct the reported problem and rerun after inspecting the server;
+successfully created site resources are preserved for recovery.
+
+Changing workers to none stops and removes only that site's managed Supervisor
+configuration. Disabling the scheduler removes only that site's managed cron
+entry. These changes preserve application files, databases, Redis state,
+credentials, keys, and shared services. Re-enable a capability by selecting it
+again, provision to stage the owned configuration, and deploy with Deployer to
+activate it.
+
+Metator rejects an unmanaged ownership conflict and rejects PHP or database
+engine changes during ordinary provisioning. Do not delete the site's data to
+work around either error.
+
 To explicitly update application-specific environment values, keep them in a
 Git-ignored local dotenv file and select both the site configuration and input:
 
@@ -267,6 +344,35 @@ values, transfers the input without printing secrets, and atomically updates
 only the selected site's environment. It does not refresh cached Laravel
 configuration or restart workers; run those actions through the normal Deployer
 and application lifecycle.
+
+## Troubleshooting
+
+- **Missing shared capability:** Run `metator:prepare-server` for a configuration
+  that selects the required capability, wait for it to finish successfully, and
+  rerun `metator:provision`.
+- **Provisioning failed:** Use the step summary and remote error as the source
+  of truth. Inspect the server before retrying; do not assume an interrupted SSH
+  connection means that no changes were made.
+- **Ownership conflict:** Keep the existing file unchanged and resolve the site
+  ID or conflicting managed resource manually. Metator will not adopt an
+  unmarked application directory, cron entry, Supervisor file, SSH alias, or
+  runtime/database selection.
+- **HTTPS is unavailable:** Confirm DNS points to the server and inbound HTTP
+  and HTTPS are allowed. Caddy obtains the certificate only after the configured
+  domain resolves correctly.
+- **Deployment fails after provisioning:** Review `deploy.php`, GitHub deploy-key
+  registration, the selected PHP binary, and the application's `.env`. Run
+  Deployer separately; provisioning does not deploy application code.
+
+## Resource ownership and removal
+
+Site-owned resources include the site directory and metadata, shared environment,
+database or MariaDB credentials, Redis allocations, deploy key and SSH block,
+Caddy route, scheduler entry, and worker configuration. Provisioning never
+performs a full uninstall or deletes site data. When a site must be removed,
+stop its application lifecycle, archive what the operator needs, and remove
+these resources manually after checking that no other site uses them. Shared
+PHP, MariaDB, Redis, cron, Supervisor, and Caddy services remain in place.
 
 ## Deploy
 
