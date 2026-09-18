@@ -20,4 +20,15 @@ grep -Fq "run('sudo supervisorctl update {{application}}-worker');" "$deploy_fil
 grep -Fq "run('sudo supervisorctl restart {{application}}-worker:*');" "$deploy_file"
 if grep -Fq "run('sudo supervisorctl update');" "$deploy_file"; then exit 1; fi
 
+# Exercise the actual generated process pattern with versioned PHP binaries.
+pattern="$(sed -n "s/.*pgrep -af '\(.*\)'.*/\1/p" "$deploy_file")"
+pattern="${pattern//\{\{deploy_path\}\}/\/var\/www\/billing}"
+for worker in horizon queue:work; do
+    worker_pattern="${pattern//\{\$workerCommand\}/$worker}"
+    for php in php php8.4 php8.5; do
+        printf '/usr/bin/%s /var/www/billing/current/artisan %s\n' "$php" "$worker" | grep -Eq "$worker_pattern"
+    done
+    if printf '/usr/bin/php8.5 /var/www/other/current/artisan %s\n' "$worker" | grep -Eq "$worker_pattern"; then exit 1; fi
+done
+
 printf '%s\n' 'Worker activation checks passed.'

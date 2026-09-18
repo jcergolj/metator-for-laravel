@@ -71,7 +71,7 @@ if ($workerType !== 'none') {
         run('sudo supervisorctl status {{application}}-worker:* | grep -q RUNNING');
 
         $workerCommand = get('worker_type') === 'horizon' ? 'horizon' : 'queue:work';
-        run("pgrep -af 'php .*{{deploy_path}}/current/artisan {$workerCommand}'");
+        run("pgrep -af 'php([0-9]+[.][0-9]+)? .*{{deploy_path}}/current/artisan {$workerCommand}'");
     });
 
     after('deploy:symlink', 'deploy:activate-workers');
