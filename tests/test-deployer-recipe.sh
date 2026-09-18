@@ -23,7 +23,7 @@ readme_text="$(<"$README")"
 [[ "$deploy_text" == *"after('deploy:vendors', 'deploy:build-tailwind');"* ]]
 [[ "$deploy_text" != *"importmap"* ]]
 [[ "$deploy_text" != *"deploy:assets"* ]]
-[[ "$readme_text" == *"asset build"* ]]
+[[ "$readme_text" == *"deploy:build-assets"* ]]
 [[ "$readme_text" == *"branch"* ]]
 
 printf '%s\n' 'Minimal Deployer recipe checks passed.'
