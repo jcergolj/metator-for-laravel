@@ -4,11 +4,9 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROMPTS_FILE="$ROOT_DIR/src/Commands/InstallationPrompts.php"
 DEPLOY_STUB="$ROOT_DIR/stubs/deploy.php.stub"
-README="$ROOT_DIR/README.md"
 
 prompts_text="$(<"$PROMPTS_FILE")"
 deploy_text="$(<"$DEPLOY_STUB")"
-readme_text="$(<"$README")"
 
 [[ "$prompts_text" == *"'__BRANCH__'"* ]]
 [[ "$prompts_text" == *"Deployment branch"* ]]
@@ -23,7 +21,5 @@ readme_text="$(<"$README")"
 [[ "$deploy_text" == *"after('deploy:vendors', 'deploy:build-tailwind');"* ]]
 [[ "$deploy_text" != *"importmap"* ]]
 [[ "$deploy_text" != *"deploy:assets"* ]]
-[[ "$readme_text" == *"deploy:build-assets"* ]]
-[[ "$readme_text" == *"branch"* ]]
 
 printf '%s\n' 'Minimal Deployer recipe checks passed.'

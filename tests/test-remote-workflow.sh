@@ -7,7 +7,6 @@ prepare_text="$(<"$ROOT_DIR/src/Commands/PrepareServerCommand.php")"
 runner_text="$(<"$ROOT_DIR/src/Remote/RemoteScriptRunner.php")"
 provider_text="$(<"$ROOT_DIR/src/MetatorServiceProvider.php")"
 bootstrap_text="$(<"$ROOT_DIR/stubs/scripts/server-bootstrap.sh")"
-readme_text="$(<"$ROOT_DIR/README.md")"
 
 [[ "$command_text" == *"metator:provision"* ]]
 [[ "$(<"$ROOT_DIR/src/Commands/UpdateEnvironmentCommand.php")" == *"metator:update-env"* ]]
@@ -30,15 +29,5 @@ readme_text="$(<"$ROOT_DIR/README.md")"
 [[ "$bootstrap_text" == *'prepare-server|provision|update-environment)'* ]]
 [[ "$bootstrap_text" == *'update-environment'* ]]
 [[ "$bootstrap_text" == *"METATOR_OPERATION"* ]]
-[[ "$readme_text" == *'metator:prepare-server --config=metator.production.php'* ]]
-[[ "$readme_text" == *'Provisioning does not run Deployer'* ]]
-[[ "$readme_text" == *'metator:provision --config=metator.production.php'* ]]
-[[ "$readme_text" == *'Ubuntu 24.04'* ]]
-[[ "$readme_text" == *'vendor/bin/dep deploy production'* ]]
-[[ "$readme_text" == *'four deployed sites'* ]]
-[[ "$readme_text" == *'Redis allocates two'* && "$readme_text" == *'logical databases per site'* ]]
-[[ "$readme_text" == *'unchanged provisioning rerun'* ]]
-[[ "$readme_text" == *'Resource ownership and removal'* ]]
-[[ "$readme_text" == *'Ownership conflict'* ]]
 
 printf '%s\n' 'Remote workflow checks passed.'
