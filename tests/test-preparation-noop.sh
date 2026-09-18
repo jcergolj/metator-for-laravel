@@ -86,11 +86,11 @@ for binary in caddy composer node npm; do
 done
 
 prepare_shared_baseline
-[[ "${apt_called:-false}" == false ]]
+[[ "${apt_called:-false}" == true ]]
 step_node
 [[ "${apt_called:-false}" == true ]]
 [[ "${systemctl_called:-false}" == true ]]
-[[ "${#apt_operations[@]}" -eq 2 ]]
+[[ "${#apt_operations[@]}" -eq 4 ]]
 [[ "${#systemctl_operations[@]}" -eq 8 ]]
 
 installed[nodejs]=true

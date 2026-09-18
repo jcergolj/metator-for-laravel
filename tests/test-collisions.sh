@@ -159,6 +159,8 @@ ENV_EXAMPLE_FILE="$TEST_DIR/example"
 printf 'APP_KEY=\nDB_CONNECTION=sqlite\n' > "$ENV_EXAMPLE_FILE"
 DATABASE_DRIVER=sqlite
 PHP_PACKAGE_PREFIX=php8.4
+sqlite3() { :; }
+php8.4() { printf 'pdo_sqlite\n'; }
 EDITOR=true
  step_shared_env <<< ''
 [[ "$(<"$TEST_DIR$APP_FOLDER/shared/.env")" == *APP_KEY=keep-me* ]]
