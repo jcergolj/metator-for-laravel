@@ -22,6 +22,8 @@ if [[ "${TEST_PREPARATION_NOOP:-}" == true ]]; then
 fi
 
 declare -A installed active enabled
+apt_operations=()
+systemctl_operations=()
 PHP_VERSION=8.4
 DATABASE_DRIVER=sqlite
 USE_REDIS=false
@@ -34,12 +36,14 @@ require_commands() { return 0; }
 sudo() {
     if [[ "$1" == apt-get || "$1" == add-apt-repository ]]; then
         apt_called=true
+        apt_operations+=("$*")
         return 0
     fi
     if [[ "$1" == systemctl ]]; then
         local action="${2:-}" service="${4:-${3:-}}"
         service="${service:-unknown}"
         systemctl_called=true
+        systemctl_operations+=("$*")
         case "$action" in
             is-active) [[ "${active[caddy]:-false}" == "true" || "$service" == php8.4-fpm ]] ;;
             is-enabled) [[ "${enabled[caddy]:-false}" == "true" || "$service" == php8.4-fpm ]] ;;
@@ -82,9 +86,12 @@ for binary in caddy composer node npm; do
 done
 
 prepare_shared_baseline
-step_node
 [[ "${apt_called:-false}" == false ]]
+step_node
+[[ "${apt_called:-false}" == true ]]
 [[ "${systemctl_called:-false}" == true ]]
+[[ "${#apt_operations[@]}" -eq 2 ]]
+[[ "${#systemctl_operations[@]}" -eq 8 ]]
 
 installed[nodejs]=true
 installed[npm]=true

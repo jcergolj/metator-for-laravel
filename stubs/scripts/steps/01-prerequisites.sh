@@ -138,7 +138,6 @@ prepare_shared_baseline() {
         sudo apt-get update || return 1
     fi
     if [[ "${#missing_php_packages[@]}" -gt 0 ]]; then
-        sudo apt-get update || return 1
         sudo apt-get install -y "${missing_php_packages[@]}" || return 1
     fi
 
