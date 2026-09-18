@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091
+# shellcheck disable=SC1090,SC1091
 # @id: prerequisites
 # @title: Prepare and verify server prerequisites
 # @group: none

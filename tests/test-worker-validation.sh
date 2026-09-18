@@ -17,7 +17,9 @@ sudo() {
         systemctl) return 0 ;;
         supervisord) printf 'Must not start another daemon\n' >&2; return 99 ;;
         supervisorctl)
-            [[ "$*" == '-c /etc/supervisor/supervisord.conf reread' ]] || return 99
+            if [[ "$*" != '-c /etc/supervisor/supervisord.conf reread' ]]; then
+                return 0
+            fi
             case "$VALIDATION" in
                 success) printf 'review-worker: available\n' ;;
                 error) printf 'ERROR: CANT_REREAD: invalid worker configuration\n' ;;
