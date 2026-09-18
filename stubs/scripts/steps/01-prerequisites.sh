@@ -77,6 +77,7 @@ prepare_shared_baseline() {
 
     require_commands apt-get apt-cache dpkg-query || return 1
     local shared_packages=(ca-certificates composer git curl jq unzip openssh-client software-properties-common caddy)
+    [[ "$DATABASE_DRIVER" == sqlite ]] && shared_packages+=(sqlite3)
     if [[ "$DATABASE_DRIVER" == mysql ]]; then
         shared_packages+=(mariadb-server)
     fi
