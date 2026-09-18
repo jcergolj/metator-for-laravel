@@ -40,6 +40,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     fi
 done < "$ENV_INPUT_FILE"
 
+if sudo cmp -s "$temporary" "$ENV_FILE"; then
+    ok 'Selected site environment is unchanged'
+    exit 0
+fi
+
 sudo install -m 640 -o "$DEPLOY_USER" -g www-data "$temporary" "${ENV_FILE}.next"
 sudo mv "${ENV_FILE}.next" "$ENV_FILE"
 ok 'Selected site environment was updated atomically'
