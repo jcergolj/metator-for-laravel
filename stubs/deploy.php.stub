@@ -52,6 +52,13 @@ task('deploy:cache', function () {
 
 after('artisan:migrate', 'deploy:cache');
 
+task('deploy:build-tailwind', function (): void {
+    run('cd {{release_path}} && {{bin/php}} artisan tailwindcss:download --force');
+    run('cd {{release_path}} && {{bin/php}} artisan tailwindcss:build --prod --no-tty');
+});
+
+after('deploy:vendors', 'deploy:build-tailwind');
+
 if ($workerType !== 'none') {
     task('deploy:activate-workers', function () {
         run('sudo supervisorctl update {{application}}-worker');
