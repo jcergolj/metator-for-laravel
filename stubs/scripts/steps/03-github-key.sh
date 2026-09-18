@@ -114,7 +114,7 @@ step_github_key() {
                 ;;
         esac
     fi
-    # Specific hosts precede wildcard defaults; retain global options above them.
+    # Keep an existing owned block in place; only insert new blocks before the first wildcard.
     cat > "$temporary" <<EOF
 # BEGIN ${GITHUB_CONFIG_MARKER}
 # Repository: ${GITHUB_REPOSITORY}
@@ -142,6 +142,13 @@ EOF
     ' "$existing" > "$merged"; then
         rm -f "$temporary" "$existing" "$merged"
         return 1
+    fi
+    if grep -qF "# BEGIN ${GITHUB_CONFIG_MARKER}" "$existing"; then
+        awk -v marker="$GITHUB_CONFIG_MARKER" -v block="$temporary" '
+            $0 == "# BEGIN " marker { inside = 1; while ((getline line < block) > 0) print line; close(block); next }
+            $0 == "# END " marker { inside = 0; next }
+            !inside { print }
+        ' "$existing" > "$merged"
     fi
     rm -f "$existing" "$temporary"
     temporary="$merged"
