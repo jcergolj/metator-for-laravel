@@ -16,16 +16,17 @@ SUPERVISOR_SUDOERS_FILE="$TEST_DIR/target.sudoers"
 USE_QUEUE=false
 USE_HORIZON=false
 SUPERVISOR_STATE=running
+SUPERVISOR_GROUP_LOADED=true
 COMMANDS="$TEST_DIR/commands"
 touch "$COMMANDS"
 
 supervisorctl() {
     printf '%s\n' "$*" >> "$COMMANDS"
     case "$1" in
-        status) [[ "$SUPERVISOR_STATE" == running ]] ;;
-        stop) [[ "$SUPERVISOR_STATE" == running ]] && SUPERVISOR_STATE=stopped ;;
+        status) [[ "$SUPERVISOR_GROUP_LOADED" == true ]] ;;
+        stop) SUPERVISOR_STATE=stopped ;;
         reread) [[ "${FAIL_REREAD:-false}" != true ]] ;;
-        update) [[ "${FAIL_UPDATE:-false}" != true && "$2" == target-worker ]] ;;
+        update) [[ "${FAIL_UPDATE:-false}" != true && "$2" == target-worker ]] && SUPERVISOR_GROUP_LOADED=false ;;
     esac
 }
 require_commands() { return 0; }
@@ -47,10 +48,15 @@ if reconcile_disabled_workers; then exit 1; fi
 [[ "$SUPERVISOR_STATE" == stopped ]]
 
 FAIL_REREAD=false
+SUPERVISOR_FILE="$TEST_DIR/target.conf"
+printf '# Managed by Metator: site_id=target\n' > "$SUPERVISOR_FILE"
 reconcile_disabled_workers
 [[ ! -e "$SUPERVISOR_FILE" ]]
 [[ ! -e "$SUPERVISOR_SUDOERS_FILE" ]]
-grep -q '^update target-worker$' "$COMMANDS"
+grep -q '^update target-worker$' "$COMMANDS" || {
+    printf 'Expected scoped update was not recorded:\n%s\n' "$(<"$COMMANDS")" >&2
+    exit 1
+}
 
 before="$(<"$COMMANDS")"
 reconcile_disabled_workers
