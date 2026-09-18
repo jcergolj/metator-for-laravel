@@ -23,7 +23,7 @@ step_database() {
         return
     fi
 
-    local metadata_database metadata_user existing_database existing_user
+    local metadata_database metadata_user existing_database existing_user existing_grants=''
     metadata_database="$(site_metadata_value database_name)"
     metadata_user="$(site_metadata_value database_user)"
     if [[ -n "$metadata_database" && "$metadata_database" != "$MYSQL_DATABASE" ]] ||
@@ -39,19 +39,25 @@ step_database() {
         die 'Existing MariaDB resources are not owned by this site'
         return 1
     fi
+    if [[ -n "$metadata_database" ]]; then
+        existing_grants="$(sudo mariadb --batch --skip-column-names -e \
+            "SHOW GRANTS FOR '${MYSQL_USERNAME}'@'${MYSQL_HOST}'")" || return 1
+    fi
     record_site_database || return 1
     local sql_password
     sql_password="${MYSQL_PASSWORD//\\/\\\\}"
     sql_password="${sql_password//\'/\'\'}"
-    {
-        printf '%s\n' "CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;"
-        if [[ -z "$existing_user" ]]; then
-            printf '%s\n' "CREATE USER '${MYSQL_USERNAME}'@'${MYSQL_HOST}' IDENTIFIED BY '${sql_password}';"
-        fi
-        printf '%s\n' \
-            "GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USERNAME}'@'${MYSQL_HOST}';" \
-            'FLUSH PRIVILEGES;'
-    } | sudo mariadb || return 1
+    local statements=()
+    [[ -n "$existing_database" ]] || statements+=("CREATE DATABASE \`${MYSQL_DATABASE}\`;")
+    if [[ -z "$existing_user" ]]; then
+        statements+=("CREATE USER '${MYSQL_USERNAME}'@'${MYSQL_HOST}' IDENTIFIED BY '${sql_password}';")
+    fi
+    if [[ -z "$existing_grants" || "$existing_grants" != *"ON \`${MYSQL_DATABASE}\`.*"* ]]; then
+        statements+=("GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USERNAME}'@'${MYSQL_HOST}';")
+    fi
+    if [[ "${#statements[@]}" -gt 0 ]]; then
+        printf '%s\n' "${statements[@]}" | sudo mariadb || return 1
+    fi
     if ! sudo -u "$DEPLOY_USER" env MYSQL_USER="$MYSQL_USERNAME" MYSQL_PWD="$MYSQL_PASSWORD" \
         MYSQL_DATABASE="$MYSQL_DATABASE" "$PHP_PACKAGE_PREFIX" \
         -r 'new PDO("mysql:host=127.0.0.1;dbname=".getenv("MYSQL_DATABASE"), getenv("MYSQL_USER"), getenv("MYSQL_PWD"));'; then
