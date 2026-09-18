@@ -24,6 +24,9 @@ sudo() {
 }
 
 step_permissions >/dev/null
+before_mode="$(stat -c '%a' "$TEST_DIR/shared/storage/log.txt")"
+step_permissions >/dev/null
+[[ "$(stat -c '%a' "$TEST_DIR/shared/storage/log.txt")" == "$before_mode" ]]
 
 for directory in \
     shared/storage/framework/cache \
