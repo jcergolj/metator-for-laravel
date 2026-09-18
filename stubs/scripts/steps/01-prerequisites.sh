@@ -63,19 +63,19 @@ step_prerequisites() {
 }
 
 prepare_shared_baseline() {
-    if [[ ! -r /etc/os-release ]] || ! grep -qE '^ID=(ubuntu|debian)$' /etc/os-release; then
+    local os_release_file="${METATOR_OS_RELEASE_FILE:-/etc/os-release}"
+    if [[ ! -r "$os_release_file" ]] || ! grep -qE '^ID=(ubuntu|debian)$' "$os_release_file"; then
         die 'Metator preparation supports Ubuntu or Debian only'
         return 1
     fi
 
-    . /etc/os-release
+    . "$os_release_file"
     if [[ "$ID" == ubuntu ]] && [[ "${VERSION_ID:-}" != 24.04 && "${VERSION_ID:-}" != 26.04 ]]; then
         die 'Metator preparation requires Ubuntu 24.04 or 26.04'
         return 1
     fi
 
-    require_commands apt-get apt-cache || return 1
-    sudo apt-get update || return 1
+    require_commands apt-get apt-cache dpkg-query || return 1
     local shared_packages=(ca-certificates composer git curl jq unzip openssh-client software-properties-common caddy)
     if [[ "$DATABASE_DRIVER" == mysql ]]; then
         shared_packages+=(mariadb-server)
@@ -89,7 +89,15 @@ prepare_shared_baseline() {
     if [[ "$USE_QUEUE" == true ]]; then
         shared_packages+=(supervisor)
     fi
-    sudo apt-get install -y "${shared_packages[@]}" || return 1
+    local missing_packages=() package
+    for package in "${shared_packages[@]}"; do
+        dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed' ||
+            missing_packages+=("$package")
+    done
+    if [[ "${#missing_packages[@]}" -gt 0 ]]; then
+        sudo apt-get update || return 1
+        sudo apt-get install -y "${missing_packages[@]}" || return 1
+    fi
     if ! command -v caddy >/dev/null 2>&1; then
         die 'Caddy installation did not provide the caddy command; refresh generated scripts with metator:install --force and retry'
         return 1
@@ -103,14 +111,6 @@ prepare_shared_baseline() {
         return 1
     fi
 
-    if ! apt-cache show "php${PHP_VERSION}-fpm" >/dev/null 2>&1; then
-        if ! command -v add-apt-repository >/dev/null 2>&1; then
-            die 'add-apt-repository is required to install the selected PHP version'
-            return 1
-        fi
-        sudo add-apt-repository -y ppa:ondrej/php || return 1
-        sudo apt-get update || return 1
-    fi
     local php_packages=(
         "php${PHP_VERSION}-cli" "php${PHP_VERSION}-fpm"
         "php${PHP_VERSION}-mbstring" "php${PHP_VERSION}-xml"
@@ -123,20 +123,48 @@ prepare_shared_baseline() {
     if [[ "$USE_REDIS" == true ]]; then
         php_packages+=("php${PHP_VERSION}-redis")
     fi
-    sudo apt-get install -y "${php_packages[@]}" || return 1
 
-    sudo systemctl enable --now "php${PHP_VERSION}-fpm" || return 1
-    if [[ "$DATABASE_DRIVER" == mysql ]]; then
-        sudo systemctl enable --now mariadb || return 1
+    local missing_php_packages=()
+    for package in "${php_packages[@]}"; do
+        dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed' ||
+            missing_php_packages+=("$package")
+    done
+    if [[ "${#missing_php_packages[@]}" -gt 0 ]] && ! apt-cache show "php${PHP_VERSION}-fpm" >/dev/null 2>&1; then
+        if ! command -v add-apt-repository >/dev/null 2>&1; then
+            die 'add-apt-repository is required to install the selected PHP version'
+            return 1
+        fi
+        sudo add-apt-repository -y ppa:ondrej/php || return 1
+        sudo apt-get update || return 1
     fi
-    if [[ "$USE_REDIS" == true ]]; then
-        sudo systemctl enable --now redis-server || return 1
+    if [[ "${#missing_php_packages[@]}" -gt 0 ]]; then
+        sudo apt-get update || return 1
+        sudo apt-get install -y "${missing_php_packages[@]}" || return 1
     fi
-    if [[ "$USE_SCHEDULER" == true ]]; then
-        sudo systemctl enable --now cron || return 1
+
+    local required_services=(caddy "php${PHP_VERSION}-fpm")
+    [[ "$DATABASE_DRIVER" == mysql ]] && required_services+=(mariadb)
+    [[ "$USE_REDIS" == true ]] && required_services+=(redis-server)
+    [[ "$USE_SCHEDULER" == true ]] && required_services+=(cron)
+    [[ "$USE_QUEUE" == true ]] && required_services+=(supervisor)
+
+    local service active enabled
+    for service in "${required_services[@]}"; do
+        active=false
+        enabled=false
+        sudo systemctl is-active --quiet "$service" && active=true
+        sudo systemctl is-enabled --quiet "$service" && enabled=true
+        if [[ "$active" != true || "$enabled" != true ]]; then
+            sudo systemctl enable --now "$service" || return 1
+        fi
+        sudo systemctl is-active --quiet "$service" || {
+            die "$service is not active after preparation"
+            return 1
+        }
+    done
+    if [[ "${#missing_packages[@]}" -eq 0 && "${#missing_php_packages[@]}" -eq 0 ]]; then
+        ok "Shared PHP ${PHP_VERSION} baseline is unchanged and ready"
+    else
+        ok "Shared PHP ${PHP_VERSION} baseline is ready"
     fi
-    if [[ "$USE_QUEUE" == true ]]; then
-        sudo systemctl enable --now supervisor || return 1
-    fi
-    ok "Shared PHP ${PHP_VERSION} baseline is ready"
 }
