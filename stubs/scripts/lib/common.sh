@@ -335,6 +335,11 @@ set_env_value() {
 merge_env_example() {
     local example_file="$1" env_file="$2" line key
     ENV_UPDATED=false
+    if [[ "${ENV_FILE_CREATED:-false}" == true ]]; then
+        sudo cp "$example_file" "$env_file" || return 1
+        ENV_UPDATED=true
+        return 0
+    fi
 
     while IFS= read -r line || [[ -n "$line" ]]; do
         [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)= ]] || continue

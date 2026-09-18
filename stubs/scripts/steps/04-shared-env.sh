@@ -23,7 +23,10 @@ step_shared_env() {
         die "Missing environment example: $ENV_EXAMPLE_FILE"
         return 1
     fi
-    merge_env_example "$ENV_EXAMPLE_FILE" "$env_file"
+    merge_env_example "$ENV_EXAMPLE_FILE" "$env_file" || return 1
+    if [[ "$ENV_FILE_CREATED" == true ]]; then
+        sudo cp "$ENV_EXAMPLE_FILE" "$env_file" || return 1
+    fi
     ensure_production_env "$env_file" || return 1
     if [[ "$ENV_FILE_CREATED" == true ]]; then
         # Laravel defaults can share prefixes when every app is named Laravel.
@@ -38,9 +41,7 @@ step_shared_env() {
         set_env_value HORIZON_PREFIX "metator_${APP_NAME}_"
         configure_redis_env || return 1
     fi
-    if ! sudo grep -qE '^APP_URL=' "$env_file"; then
-        set_env_value APP_URL "https://${DOMAIN}"
-    fi
+    set_env_value APP_URL "https://${DOMAIN}"
     ensure_database_config || return 1
     configure_database_env
     sudo install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "/home/${DEPLOY_USER}/.local/share/nano"
