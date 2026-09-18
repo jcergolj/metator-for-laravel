@@ -91,6 +91,28 @@ step_github_key() {
     elif ! sudo test -f "${GITHUB_KEY}.pub"; then
         die "Private key exists without its public key: ${GITHUB_KEY}.pub"
         return 1
+    elif [[ -t 0 ]]; then
+        local key_choice key_replace
+        read -r -p 'Deployment key already exists. Reuse it or create a new key? [reuse/new] ' key_choice
+        case "${key_choice,,}" in
+            reuse) ;;
+            new)
+                read -r -p 'Replace the existing deployment key? [y/N] ' key_replace
+                [[ "${key_replace,,}" == y || "${key_replace,,}" == yes ]] || {
+                    die 'Existing deployment key was retained'
+                    return 1
+                }
+                sudo rm -f "$GITHUB_KEY" "${GITHUB_KEY}.pub" || return 1
+                sudo -u "$DEPLOY_USER" ssh-keygen -t ed25519 -f "$GITHUB_KEY" \
+                    -C "${APP_NAME} production deployer key" -N '' || return 1
+                show_github_registration_guidance
+                read -r -p 'Press Enter after adding the new key to GitHub: ' || return 1
+                ;;
+            *)
+                die 'Choose reuse or new for the existing deployment key'
+                return 1
+                ;;
+        esac
     fi
     # Specific hosts precede wildcard defaults; retain global options above them.
     cat > "$temporary" <<EOF

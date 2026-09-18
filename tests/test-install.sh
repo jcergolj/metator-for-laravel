@@ -38,6 +38,7 @@ common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$instructions_stub" == *'deploy.php already terminates Horizon'* ]]
 [[ "$instructions_stub" != *'Deploy with WORKER_TYPE=queue'* ]]
 [[ "$common_stub" == *"__GIT_DEPLOYER_NAME__"* ]]
+[[ "$(<"$ROOT_DIR/stubs/scripts/steps/03-github-key.sh")" == *'Deployment key already exists'* ]]
 [[ "$prompts_text" == *".env.example"* ]]
 [[ "$command_text" == *'Missing application .env.example'* ]]
 deploy_stub_text="$(<"$ROOT_DIR/stubs/deploy.php.stub")"
