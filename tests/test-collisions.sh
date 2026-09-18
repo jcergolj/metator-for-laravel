@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2329
 # shellcheck disable=SC1090,SC1091,SC2034,SC2317
 set -Eeuo pipefail
 
@@ -261,7 +262,7 @@ step_workers
 [[ ! -e "$SUPERVISOR_FILE" && ! -e "$SUPERVISOR_SUDOERS_FILE" ]]
 grep -Fqx 'stop billing-worker:*' "$TEST_DIR/supervisor"
 grep -qx 'reread' "$TEST_DIR/supervisor"
-grep -qx 'update' "$TEST_DIR/supervisor"
+grep -qx 'update billing-worker' "$TEST_DIR/supervisor"
 [[ "$(<"$other_worker_file")" == '# Managed by Metator: site_id=other' ]]
 step_workers
 printf '%s\n' '# Managed by Metator: site_id=other' > "$SUPERVISOR_FILE"
