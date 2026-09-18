@@ -9,7 +9,7 @@ source "$ROOT_DIR/stubs/scripts/steps/07-caddy.sh"
 source "$ROOT_DIR/stubs/scripts/steps/09-workers.sh"
 
 die() { printf '%s\n' "$*" >&2; }
-ok() { :; }
+ok() { printf '%s\n' "$*" >> "$TEST_DIR/success"; }
 record_site_domain() { :; }
 require_commands() { :; }
 # supervisorctl is invoked through the mocked sudo wrapper below.
@@ -25,6 +25,12 @@ sudo() {
         arguments+=("$argument")
     done
     case "$executable" in
+        install|cp|mv|tee)
+            if [[ "${arguments[*]}" == *"$TEST_DIR/etc/caddy/"* && "${arguments[-1]}" == "$TEST_DIR/etc/caddy/"* ]]; then
+                printf '%s\n' "$executable $*" >> "$TEST_DIR/live-writes"
+            fi ;;
+    esac
+    case "$executable" in
         sed)
             [[ "$FAIL_REWRITE" != true ]] || return 1 ;;
         caddy)
@@ -38,6 +44,10 @@ sudo() {
             return "$CADDY_STATUS" ;;
         systemctl)
             printf '%s\n' "$*" >> "$TEST_DIR/service-actions"
+            case "$*" in
+                'is-active --quiet caddy') return "${CADDY_ACTIVE_STATUS:-0}" ;;
+                'reload caddy') return "${CADDY_RELOAD_STATUS:-0}" ;;
+            esac
             return 0 ;;
         supervisorctl)
             printf '%s\n' "$*" >> "$TEST_DIR/supervisor-actions"
@@ -84,13 +94,31 @@ ${DOMAIN} {
 EOF
 main_before="$(<"$TEST_DIR/etc/caddy/Caddyfile")"
 site_before="$(<"$TEST_DIR$CADDY_SITE")"
+metadata_before="$(stat -c '%i %y' "$TEST_DIR/etc/caddy/Caddyfile" "$TEST_DIR$CADDY_SITE")"
 
 # An unchanged rerun validates the temporary import, including with positional args.
 step_caddy
 step_caddy argument
 [[ "$(<"$TEST_DIR/etc/caddy/Caddyfile")" == "$main_before" ]]
 [[ "$(<"$TEST_DIR$CADDY_SITE")" == "$site_before" ]]
-[[ ! -e "$TEST_DIR/service-actions" ]]
+[[ "$(<"$TEST_DIR/service-actions")" == $'is-active --quiet caddy\nis-active --quiet caddy' ]]
+grep -Fxq 'Caddy configuration is unchanged and the service is active' "$TEST_DIR/success"
+[[ "$(stat -c '%i %y' "$TEST_DIR/etc/caddy/Caddyfile" "$TEST_DIR$CADDY_SITE")" == "$metadata_before" ]]
+[[ ! -e "$TEST_DIR/live-writes" ]]
+
+# Inactive services (3) and failed queries (1) both fail without mutations.
+for CADDY_ACTIVE_STATUS in 3 1; do
+    rm "$TEST_DIR/service-actions"
+    : > "$TEST_DIR/success"
+    if step_caddy; then exit 1; fi
+    [[ "$(<"$TEST_DIR/service-actions")" == 'is-active --quiet caddy' ]]
+    [[ ! -s "$TEST_DIR/success" && ! -e "$TEST_DIR/live-writes" ]]
+    [[ "$(stat -c '%i %y' "$TEST_DIR/etc/caddy/Caddyfile" "$TEST_DIR$CADDY_SITE")" == "$metadata_before" ]]
+    [[ "$(<"$TEST_DIR/etc/caddy/Caddyfile")" == "$main_before" ]]
+    [[ "$(<"$TEST_DIR$CADDY_SITE")" == "$site_before" ]]
+done
+rm "$TEST_DIR/service-actions"
+CADDY_ACTIVE_STATUS=0
 
 # A failed rewrite must stop before validation or a false no-op success.
 rm "$TEST_DIR/caddy-actions"
@@ -105,6 +133,20 @@ if step_caddy; then exit 1; fi
 [[ "$(<"$TEST_DIR/etc/caddy/Caddyfile")" == "$main_before" ]]
 [[ "$(<"$TEST_DIR$CADDY_SITE")" == "$site_before" ]]
 [[ ! -e "$TEST_DIR/service-actions" ]]
+
+# Changed configuration still reloads, and failed activation restores both files.
+CADDY_STATUS=0
+PHP_FPM_SOCKET=/run/php/php8.5-fpm.sock
+CADDY_RELOAD_STATUS=1
+if step_caddy; then exit 1; fi
+[[ "$(<"$TEST_DIR/service-actions")" == 'reload caddy' ]]
+[[ "$(<"$TEST_DIR/etc/caddy/Caddyfile")" == "$main_before" ]]
+[[ "$(<"$TEST_DIR$CADDY_SITE")" == "$site_before" ]]
+rm "$TEST_DIR/service-actions"
+CADDY_RELOAD_STATUS=0
+step_caddy
+[[ "$(<"$TEST_DIR/service-actions")" == 'reload caddy' ]]
+grep -Fq 'php8.5-fpm.sock' "$TEST_DIR$CADDY_SITE"
 
 USE_QUEUE=true
 USE_HORIZON=false

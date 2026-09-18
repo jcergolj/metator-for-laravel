@@ -79,9 +79,14 @@ EOF
         changed=true
     fi
     if [[ "$changed" != true ]]; then
+        if ! sudo systemctl is-active --quiet caddy; then
+            rm -rf "$temporary"
+            die 'Caddy configuration is unchanged but service readiness could not be verified; restore the Caddy service before retrying'
+            return 1
+        fi
         rm -rf "$temporary"
         record_site_domain || return 1
-        ok 'Caddy configuration is already current'
+        ok 'Caddy configuration is unchanged and the service is active'
         return
     fi
 
