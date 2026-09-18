@@ -17,6 +17,7 @@ step_node() {
         if [[ "${#missing_packages[@]}" -gt 0 ]]; then
             sudo apt-get update || return 1
             sudo apt-get install -y "${missing_packages[@]}" || return 1
+            require_commands node npm || return 1
         else
             ok 'Node.js and npm are unchanged and ready'
         fi

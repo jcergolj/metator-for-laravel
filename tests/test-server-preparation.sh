@@ -40,7 +40,7 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 node_text="$(<"$ROOT_DIR/stubs/scripts/steps/11-node.sh")"
 [[ "$node_text" == *'# @id: node'* ]]
 [[ "$node_text" == *'# @default: false'* ]]
-[[ "$node_text" == *'apt-get install -y nodejs npm'* ]]
+[[ "$node_text" == *"apt-get install -y \"\${missing_packages[@]}\""* ]]
 [[ "$node_text" == *'require_commands node npm'* ]]
 [[ "$common_text" == *"\"\$METATOR_OPERATION\" == prepare-server"* ]]
 [[ "$common_text" == *'prerequisites|node)'* ]]
