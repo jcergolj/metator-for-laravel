@@ -19,6 +19,11 @@ cat > "$TEST_DIR/bin/add-apt-repository" <<'EOF'
 printf 'add-apt-repository %s\n' "$*" >> "$COMMANDS"
 EOF
 chmod +x "$TEST_DIR/bin/add-apt-repository"
+cat > "$TEST_DIR/bin/dpkg" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$TEST_DIR/bin/dpkg"
 PATH="$TEST_DIR/bin:$PATH"
 export COMMANDS PATH
 
@@ -34,10 +39,6 @@ curl() {
     [[ -n "$output" ]]
     printf '%s\n' 'test archive keyring package' > "$output"
 }
-
-# The production code checks dpkg availability before invoking it through sudo.
-# shellcheck disable=SC2032
-dpkg() { :; }
 
 sudo() {
     local executable="$1"
