@@ -268,6 +268,11 @@ work.
 
 ## Updating Environment Values
 
+Before the first deployment, review the generated `scripts/.env.example` for
+application-specific production values. Provisioning initializes the remote
+environment noninteractively and reports that review guidance locally; it does
+not open an editor or wait for input on the server.
+
 Put application-specific production values in a Git-ignored local dotenv file:
 
 ```bash

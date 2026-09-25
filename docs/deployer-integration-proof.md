@@ -26,19 +26,46 @@ Metator's site provisioning pipeline. The generated release recipe does use
 Deployer for code deployment and lifecycle hooks, while Metator retains its
 site-specific provisioning responsibilities.
 
+## Disposable Ubuntu 24.04 VPS evidence
+
+On 2026-09-25, a disposable Ubuntu 24.04 VPS was provisioned with the generated
+configuration for `jcergolj/simpletimer` (`master`, Laravel 13.32.0), site ID
+`production-simpletimer`, SQLite, PHP 8.5, scheduler enabled, and no workers or
+Redis. The target reported kernel `6.8.0-138-generic`; PHP 8.5.11/FPM came from
+Ondřej's PHP PPA and Composer 2.7.1 from Ubuntu packages. The operator connection
+used key authentication as root with sudo; Metator created the separate
+`deployer` account and configured its SSH key.
+
+Executed outcomes:
+
+- `php artisan metator:prepare-server --config=metator.production.php` completed
+  successfully and reported the PHP 8.5/SQLite shared baseline ready.
+- Provisioning first reached the selected acceptance step, reported its
+  intentional exit status 42, and stopped. After correcting that local custom
+  script, rerunning provisioning completed successfully, prepared SQLite,
+  configured Caddy and the scheduler, and did not deploy code.
+- `vendor/bin/dep deploy production --no-interaction -v` completed twice,
+  producing releases 1 and 2. The release cloned the public repository through
+  Deployer, installed Composer dependencies, built Tailwind assets, ran Laravel
+  migrations, and activated each release separately.
+- Caddy and PHP-FPM 8.5 and cron reported active. HTTP returned 308 to HTTPS;
+  HTTPS returned 200 with certificate verification result 0.
+- A subsequent unchanged `metator:provision` rerun completed. The SQLite file
+  remained present and Laravel reported all migrations as applied.
+
+The first live run exposed the PHP SQLite module check's `grep -q`/`pipefail`
+false failure; this is fixed in the follow-up branch and covered by
+`tests/test-sqlite-database.sh`. The run also showed that launching a remote
+editor for environment review fails without a terminal. The follow-up removes
+remote interaction and prints local review guidance instead.
+
 ## Evidence still required
 
-No real Ubuntu 24.04 target was provisioned or deployed for this proof. There is
-no real-service evidence for SSH/sudo, SQLite persistence, application release,
-custom-step failure and remote retry, or recovery on an Ubuntu host. Ubuntu
-26.04 is not currently listed as a supported baseline in ADR 0014 and is not
-included in the v1 release gate. Do not infer support for it from local task
-tree validation.
-
-The local evidence confirms recipe loading and command composition, not that a
-complete migration is worthwhile. Keep the existing custom provisioner for now:
-stock provision behavior conflicts with current guarantees, and this proof has
-not demonstrated a simpler compatible upstream alternative. Before issue #99
-can close, add a disposable Ubuntu 24.04 end-to-end run and a final decision on
-the bounded scope of any follow-up migration. Keep the Ubuntu 26.04 question
-separate until the supported baseline is explicitly decided.
+Ubuntu 26.04 has passed the non-privileged container/PHP test matrix, but has
+not been provisioned and deployed on a real VM/VPS. The Ubuntu 24.04 VPS run
+covered one site; it did not exercise the fifth-site concurrency and
+cross-site-isolation release scenarios. The final evidence-based migration
+recommendation and bounded scope for issue #100 are also outstanding. Issue #99
+must remain open until the Ubuntu 26.04 real-service run and remaining required
+acceptance evidence are recorded. Keep Ubuntu 26.04 support distinct from the
+baseline in ADR 0014 until that decision is made.
