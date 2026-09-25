@@ -22,7 +22,12 @@ cat > "$TEST_DIR/steps/20-optional.sh" <<'EOF'
 # @required: false
 # @default: true
 # @order: 20
-step_optional() { return 37; }
+step_optional() {
+    if [[ -f "$TEST_DIR/retry" ]]; then
+        return 0
+    fi
+    return 37
+}
 EOF
 cat > "$TEST_DIR/steps/30-after.sh" <<'EOF'
 # @id: after
@@ -46,6 +51,16 @@ status="${status:-0}"
 [[ "$status" == 37 ]]
 [[ "${STEP_FAILED[*]}" == *'Optional step (exit status 37)'* ]]
 [[ "$(<"$output_file")" != *'after-ran'* ]]
+
+# Rerun the same selected custom step after correcting its failure condition.
+touch "$TEST_DIR/retry"
+STEP_SUCCESSFUL=()
+STEP_FAILED=()
+status=0
+run_selected_steps >"$output_file" 2>&1 || status=$?
+[[ "$status" == 0 ]]
+[[ "${#STEP_FAILED[@]}" == 0 ]]
+[[ "$(<"$output_file")" == *'after-ran'* ]]
 
 SCRIPT_DIR="$TEST_DIR"
 METATOR_OPERATION=prepare-server

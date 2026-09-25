@@ -10,9 +10,10 @@ runtime verification and release tasks, adds worker lifecycle hooks only when
 workers are selected, and does not call Metator preparation or provisioning.
 Run it with `php tests/test-deployer-workflow.php` after `composer install`.
 
-The existing shell tests exercise failure propagation and stop-on-failure in
-selected custom steps, and test provisioning input, ownership, and no-op
-behavior. These are local tests; they do not establish remote service behavior.
+The existing shell tests exercise selected custom-step failure propagation,
+stop-on-failure, and a successful retry after correcting the failed step. They
+also test provisioning input, ownership, and no-op behavior. These are local
+tests; they do not establish remote service behavior or remote retry recovery.
 
 ## Upstream fit assessment
 
