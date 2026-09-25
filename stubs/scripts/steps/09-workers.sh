@@ -95,12 +95,14 @@ EOF
 }
 
 configure_worker_sudoers() {
-    local supervisorctl_path temporary
+    local supervisorctl_path temporary worker_program worker_instance
     supervisorctl_path="$(command -v supervisorctl)"
+    worker_program="${APP_NAME}-worker"
+    worker_instance="${worker_program}\\:${worker_program}"
     temporary="$(mktemp)"
     cat > "$temporary" <<EOF
 # Managed by Metator: site_id=${SITE_ID}
-${DEPLOY_USER} ALL=(root) NOPASSWD: ${supervisorctl_path} update ${APP_NAME}-worker, ${supervisorctl_path} restart ${APP_NAME}-worker\:*, ${supervisorctl_path} status ${APP_NAME}-worker\:*
+${DEPLOY_USER} ALL=(root) NOPASSWD: ${supervisorctl_path} update ${worker_program}, ${supervisorctl_path} restart ${worker_instance}, ${supervisorctl_path} status ${worker_instance}
 EOF
     if ! sudo cmp -s "$temporary" "$SUPERVISOR_SUDOERS_FILE"; then
         sudo install -m 440 -o root -g root "$temporary" "$SUPERVISOR_SUDOERS_FILE" || { rm -f "$temporary"; return 1; }

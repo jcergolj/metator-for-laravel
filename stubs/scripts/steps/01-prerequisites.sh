@@ -90,14 +90,28 @@ prepare_shared_baseline() {
     if [[ "$USE_QUEUE" == true ]]; then
         shared_packages+=(supervisor)
     fi
-    local missing_packages=() package
+    local missing_packages=() missing_command_packages=() package required_command
     for package in "${shared_packages[@]}"; do
         dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed' ||
             missing_packages+=("$package")
     done
-    if [[ "${#missing_packages[@]}" -gt 0 ]]; then
+    for required_command in composer git curl jq unzip caddy; do
+        if ! command -v "$required_command" >/dev/null 2>&1; then
+            if dpkg-query -W -f='${Status}' "$required_command" 2>/dev/null | grep -qx 'install ok installed'; then
+                missing_command_packages+=("$required_command")
+            elif [[ " ${missing_packages[*]} " != *" $required_command "* ]]; then
+                missing_packages+=("$required_command")
+            fi
+        fi
+    done
+    if [[ "${#missing_packages[@]}" -gt 0 || "${#missing_command_packages[@]}" -gt 0 ]]; then
         sudo apt-get update || return 1
+    fi
+    if [[ "${#missing_packages[@]}" -gt 0 ]]; then
         sudo apt-get install -y "${missing_packages[@]}" || return 1
+    fi
+    if [[ "${#missing_command_packages[@]}" -gt 0 ]]; then
+        sudo apt-get install --reinstall -y "${missing_command_packages[@]}" || return 1
     fi
     if ! command -v caddy >/dev/null 2>&1; then
         die 'Caddy installation did not provide the caddy command; refresh generated scripts with metator:install --force and retry'
@@ -114,7 +128,7 @@ prepare_shared_baseline() {
 
     local php_packages=(
         "php${PHP_VERSION}-cli" "php${PHP_VERSION}-fpm"
-        "php${PHP_VERSION}-mbstring" "php${PHP_VERSION}-xml"
+        "php${PHP_VERSION}-mbstring" "php${PHP_VERSION}-xml" "php${PHP_VERSION}-intl"
         "php${PHP_VERSION}-curl" "php${PHP_VERSION}-zip"
         "php${PHP_VERSION}-bcmath" "php${PHP_VERSION}-sqlite3"
     )
@@ -131,12 +145,7 @@ prepare_shared_baseline() {
             missing_php_packages+=("$package")
     done
     if [[ "${#missing_php_packages[@]}" -gt 0 ]] && ! apt-cache show "php${PHP_VERSION}-fpm" >/dev/null 2>&1; then
-        if ! command -v add-apt-repository >/dev/null 2>&1; then
-            die 'add-apt-repository is required to install the selected PHP version'
-            return 1
-        fi
-        sudo add-apt-repository -y ppa:ondrej/php || return 1
-        sudo apt-get update || return 1
+        configure_php_package_source "$os_release_file" || return 1
     fi
     if [[ "${#missing_php_packages[@]}" -gt 0 ]]; then
         sudo apt-get install -y "${missing_php_packages[@]}" || return 1
@@ -162,9 +171,77 @@ prepare_shared_baseline() {
             return 1
         }
     done
-    if [[ "${#missing_packages[@]}" -eq 0 && "${#missing_php_packages[@]}" -eq 0 ]]; then
+    if [[ "${#missing_packages[@]}" -eq 0 && "${#missing_command_packages[@]}" -eq 0 && "${#missing_php_packages[@]}" -eq 0 ]]; then
         ok "Shared PHP ${PHP_VERSION} baseline is unchanged and ready"
     else
         ok "Shared PHP ${PHP_VERSION} baseline is ready"
     fi
+}
+
+configure_php_package_source() {
+    local os_release_file="$1" id version_id version_codename
+    . "$os_release_file"
+    id="$ID"
+    version_id="${VERSION_ID:-}"
+    version_codename="${VERSION_CODENAME:-}"
+
+    if [[ "$id" == ubuntu && "$version_id" == 26.04 && "$PHP_VERSION" == 8.4 ]]; then
+        configure_sury_php_repository "$version_codename" || return 1
+    else
+        if ! command -v add-apt-repository >/dev/null 2>&1; then
+            die 'add-apt-repository is required to install the selected PHP version'
+            return 1
+        fi
+        sudo add-apt-repository -y ppa:ondrej/php || return 1
+    fi
+
+    sudo apt-get update
+}
+
+configure_sury_php_repository() {
+    local codename="$1"
+    if [[ "$codename" != resolute ]]; then
+        die "Unexpected Ubuntu 26.04 codename for the Sury PHP repository: ${codename:-unset}"
+        return 1
+    fi
+
+    require_commands curl dpkg || return 1
+
+    local source_file="${METATOR_PHP_SURY_SOURCE_FILE:-/etc/apt/sources.list.d/metator-php-sury.list}"
+    local keyring="${METATOR_PHP_SURY_KEYRING_PATH:-/usr/share/keyrings/debsuryorg-archive-keyring.gpg}"
+    local source_entry="deb [signed-by=${keyring}] https://packages.sury.org/php/ ${codename} main"
+    local candidate keyring_directory keyring_package
+
+    candidate="$(mktemp)" || return 1
+    printf '%s\n' "$source_entry" > "$candidate"
+    if sudo test -e "$source_file" && ! sudo cmp -s "$candidate" "$source_file"; then
+        rm -f "$candidate"
+        die "Existing PHP package source is not owned by Metator or does not match: $source_file"
+        return 1
+    fi
+
+    if ! sudo test -f "$keyring"; then
+        keyring_directory="$(mktemp -d)" || { rm -f "$candidate"; return 1; }
+        keyring_package="$keyring_directory/debsuryorg-archive-keyring.deb"
+        if ! curl --fail --silent --show-error --location \
+            --output "$keyring_package" \
+            'https://packages.sury.org/debsuryorg-archive-keyring.deb'; then
+            rm -rf "$keyring_directory" "$candidate"
+            die 'Could not download the Sury PHP archive keyring package'
+            return 1
+        fi
+        if ! sudo dpkg -i "$keyring_package"; then
+            rm -rf "$keyring_directory" "$candidate"
+            return 1
+        fi
+        rm -rf "$keyring_directory"
+    fi
+
+    if ! sudo test -e "$source_file"; then
+        if ! sudo install -m 644 -o root -g root "$candidate" "$source_file"; then
+            rm -f "$candidate"
+            return 1
+        fi
+    fi
+    rm -f "$candidate"
 }

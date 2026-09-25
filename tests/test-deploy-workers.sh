@@ -17,7 +17,8 @@ verify_line="$(grep -n "after('deploy:restart-workers', 'deploy:verify-workers')
 (( verify_line > restart_line ))
 
 grep -Fq "run('sudo supervisorctl update {{application}}-worker');" "$deploy_file"
-grep -Fq "run('sudo supervisorctl restart {{application}}-worker:*');" "$deploy_file"
+grep -Fq "run('sudo supervisorctl restart {{application}}-worker:{{application}}-worker');" "$deploy_file"
+grep -Fq "sudo supervisorctl status {{application}}-worker:{{application}}-worker" "$deploy_file"
 if grep -Fq "run('sudo supervisorctl update');" "$deploy_file"; then exit 1; fi
 
 # Exercise the actual generated process pattern with versioned PHP binaries.

@@ -70,12 +70,12 @@ if ($workerType !== 'none') {
         } elseif ($workerType !== 'queue') {
             throw new \RuntimeException('WORKER_TYPE must be either horizon or queue');
         }
-        run('sudo supervisorctl restart {{application}}-worker:*');
+        run('sudo supervisorctl restart {{application}}-worker:{{application}}-worker');
     });
 
     task('deploy:verify-workers', function () {
         run('test "$(readlink -f {{deploy_path}}/current)" = "{{release_path}}"');
-        run('sudo supervisorctl status {{application}}-worker:* | grep -q RUNNING');
+        run('sudo supervisorctl status {{application}}-worker:{{application}}-worker | grep -q RUNNING');
 
         $workerCommand = get('worker_type') === 'horizon' ? 'horizon' : 'queue:work';
         run("pgrep -af 'php([0-9]+[.][0-9]+)? .*{{deploy_path}}/current/artisan {$workerCommand}'");
