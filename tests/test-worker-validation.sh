@@ -64,7 +64,7 @@ step_workers
 [[ -f "$SUPERVISOR_SUDOERS_FILE" ]]
 grep -Fq 'restart review-worker\:review-worker' "$SUPERVISOR_SUDOERS_FILE"
 grep -Fq 'status review-worker\:review-worker' "$SUPERVISOR_SUDOERS_FILE"
-! grep -Fq 'review-worker:*' "$SUPERVISOR_SUDOERS_FILE"
+if grep -Fq 'review-worker:*' "$SUPERVISOR_SUDOERS_FILE"; then exit 1; fi
 if grep -q '^supervisord ' "$TEST_DIR/commands"; then exit 1; fi
 if grep -qE '^supervisorctl .* (update|restart|start)( |$)' "$TEST_DIR/commands"; then exit 1; fi
 printf 'Worker validation checks passed.\n'

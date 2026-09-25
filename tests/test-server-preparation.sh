@@ -39,7 +39,7 @@ common_text="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$prerequisites_text" == *'add-apt-repository is required'* ]]
 [[ "$prerequisites_text" == *'packages.sury.org/debsuryorg-archive-keyring.deb'* ]]
 [[ "$prerequisites_text" == *'metator-php-sury.list'* ]]
-[[ "$prerequisites_text" == *'configure_sury_php_repository "$version_codename"'* ]]
+[[ "$prerequisites_text" == *"configure_sury_php_repository \"\$version_codename\""* ]]
 [[ "$prerequisites_text" == *'Unexpected Ubuntu 26.04 codename'* ]]
 [[ "$prerequisites_text" == *'Composer installation did not provide the composer command'* ]]
 [[ "$prerequisites_text" == *'Caddy installation did not provide the caddy command'* ]]

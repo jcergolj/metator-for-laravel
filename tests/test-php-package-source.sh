@@ -13,9 +13,17 @@ METATOR_PHP_SURY_KEYRING_PATH="$TEST_DIR/keyrings/debsuryorg-archive-keyring.gpg
 COMMANDS="$TEST_DIR/commands"
 mkdir -p "$(dirname "$METATOR_PHP_SURY_SOURCE_FILE")" "$(dirname "$METATOR_PHP_SURY_KEYRING_PATH")"
 touch "$COMMANDS"
+mkdir -p "$TEST_DIR/bin"
+cat > "$TEST_DIR/bin/add-apt-repository" <<'EOF'
+#!/usr/bin/env bash
+printf 'add-apt-repository %s\n' "$*" >> "$COMMANDS"
+EOF
+chmod +x "$TEST_DIR/bin/add-apt-repository"
+PATH="$TEST_DIR/bin:$PATH"
+export COMMANDS PATH
 
 curl() {
-    local output='' argument
+    local output=''
     printf 'curl %s\n' "$*" >> "$COMMANDS"
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -27,10 +35,8 @@ curl() {
     printf '%s\n' 'test archive keyring package' > "$output"
 }
 
-add-apt-repository() {
-    printf 'add-apt-repository %s\n' "$*" >> "$COMMANDS"
-}
-
+# The production code checks dpkg availability before invoking it through sudo.
+# shellcheck disable=SC2032
 dpkg() { :; }
 
 sudo() {
@@ -43,7 +49,7 @@ sudo() {
             printf 'dpkg %s\n' "$*" >> "$COMMANDS"
             [[ "$1" == -i ]]
             touch "$METATOR_PHP_SURY_KEYRING_PATH" ;;
-        add-apt-repository) add-apt-repository "$@" ;;
+        add-apt-repository) command add-apt-repository "$@" ;;
         install)
             local arguments=()
             while [[ "$#" -gt 0 ]]; do
