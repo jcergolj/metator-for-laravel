@@ -11,7 +11,8 @@ ensure_github_host_key() {
     local expected='github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl'
     local scanned
 
-    scanned="$(sudo -u "$DEPLOY_USER" ssh-keyscan -t ed25519 github.com 2>/dev/null)"
+    scanned="$(sudo -u "$DEPLOY_USER" ssh-keyscan -t ed25519 github.com 2>/dev/null |
+        awk '$1 == "github.com" && $2 == "ssh-ed25519" { print }' | sort -u)"
     if [[ "$scanned" != "$expected" ]]; then
         die 'GitHub SSH host key did not match the pinned GitHub fingerprint'
         return 1

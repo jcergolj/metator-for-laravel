@@ -32,7 +32,7 @@ common_stub="$(<"$ROOT_DIR/stubs/scripts/lib/common.sh")"
 [[ "$deploy_stub" == *"set('worker_type', \$workerType);"* ]]
 [[ "$deploy_stub" == *"set('writable_dirs', ['shared/storage']);"* ]]
 [[ "$deploy_stub" == *"artisan horizon:terminate"* ]]
-[[ "$deploy_stub" == *"supervisorctl restart {{application}}-worker:*"* ]]
+[[ "$deploy_stub" == *"supervisorctl restart {{application}}-worker:{{application}}-worker"* ]]
 [[ "$deploy_stub" == *"function () use (\$workerType)"* ]]
 [[ "$deploy_stub" == *"deploy:verify-workers"* ]]
 [[ "$instructions_stub" == *'deploy.php already terminates Horizon'* ]]

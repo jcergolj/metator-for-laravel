@@ -14,7 +14,7 @@ step_database() {
             die "SQLite is not prepared; run prepare-server with PHP ${PHP_VERSION} and SQLite selected"
             return 1
         }
-        if ! "$PHP_PACKAGE_PREFIX" -m | grep -qx 'pdo_sqlite'; then
+        if ! "$PHP_PACKAGE_PREFIX" -m | grep -x 'pdo_sqlite' >/dev/null; then
             die "PHP ${PHP_VERSION} SQLite support is not prepared; run prepare-server with PHP ${PHP_VERSION} and SQLite selected"
             return 1
         fi

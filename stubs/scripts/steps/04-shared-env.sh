@@ -44,11 +44,9 @@ step_shared_env() {
     set_env_value APP_URL "https://${DOMAIN}"
     ensure_database_config || return 1
     configure_database_env
-    sudo install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "/home/${DEPLOY_USER}/.local/share/nano"
     if [[ "$ENV_UPDATED" == true ]]; then
-        warn "Review $env_file before continuing."
-        sudo -u "$DEPLOY_USER" "${EDITOR:-nano}" "$env_file"
-        read -r -p 'Press Enter to confirm the .env review and continue: '
+        warn 'Review application-specific production values in the local scripts/.env.example before the first deployment.'
+        warn 'Use metator:update-env with a Git-ignored local dotenv file to apply intentional changes.'
     fi
     ok 'Shared production .env exists and database settings were updated'
 }

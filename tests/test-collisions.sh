@@ -25,7 +25,10 @@ sandbox_sudo() {
     case "$executable" in
         chmod|chown|apt-get) return 0 ;;
         git) return "${GIT_STATUS:-0}" ;;
-        ssh-keyscan) printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n'; return 0 ;;
+        ssh-keyscan)
+            printf '# github.com:22 SSH-2.0-test-banner\n'
+            printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n'
+            return 0 ;;
         ssh-keygen) printf 'Unexpected key generation\n' >&2; return 1 ;;
         install)
             set -- "${arguments[@]}"

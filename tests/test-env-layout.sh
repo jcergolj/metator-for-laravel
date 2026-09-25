@@ -2,6 +2,7 @@
 # shellcheck disable=SC1091,SC2034
 set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SHARED_ENV_STEP="$ROOT_DIR/stubs/scripts/steps/04-shared-env.sh"
 TEST_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEST_DIR"' EXIT
 source "$ROOT_DIR/stubs/scripts/lib/common.sh"
@@ -28,4 +29,13 @@ cp "$TEST_DIR/env" "$TEST_DIR/before"
 merge_env_example "$TEST_DIR/example" "$TEST_DIR/env"
 cmp "$TEST_DIR/before" "$TEST_DIR/env"
 [[ "$ENV_UPDATED" == false ]]
+
+# Provisioning reports local review guidance; it never starts an editor or reads
+# interactive input on the remote host.
+shared_env_step="$(<"$SHARED_ENV_STEP")"
+[[ "$shared_env_step" == *'local scripts/.env.example'* ]]
+[[ "$shared_env_step" == *'metator:update-env'* ]]
+[[ "$shared_env_step" != *'nano'* ]]
+[[ "$shared_env_step" != *'read -r -p'* ]]
+
 printf 'Environment layout checks passed.\n'

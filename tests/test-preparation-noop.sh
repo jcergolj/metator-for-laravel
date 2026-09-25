@@ -63,7 +63,7 @@ dpkg-query() {
 }
 apt-cache() { return 0; }
 
-for package in ca-certificates composer git curl jq unzip openssh-client software-properties-common caddy php8.4-cli php8.4-fpm php8.4-mbstring php8.4-xml php8.4-curl php8.4-zip php8.4-bcmath php8.4-sqlite3; do
+for package in ca-certificates composer git curl jq unzip openssh-client software-properties-common caddy php8.4-cli php8.4-fpm php8.4-mbstring php8.4-xml php8.4-intl php8.4-curl php8.4-zip php8.4-bcmath php8.4-sqlite3; do
     installed["$package"]=true
 done
 for service in caddy php8.4-fpm; do
@@ -80,7 +80,7 @@ installed[node]=true
 installed[npm]=true
 PATH="$TEST_DIR/bin:$PATH"
 mkdir -p "$TEST_DIR/bin"
-for binary in caddy composer node npm; do
+for binary in caddy composer git curl jq unzip node npm; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$TEST_DIR/bin/$binary"
     chmod +x "$TEST_DIR/bin/$binary"
 done
