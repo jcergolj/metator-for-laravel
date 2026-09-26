@@ -187,6 +187,39 @@ packages, and selects Sury only for Ubuntu 26.04/PHP 8.4. Its tests verify sourc
 selection, keyring setup, and refusal to overwrite a conflicting source. The
 complete `tests/*.sh` suite passes.
 
+## Ubuntu 24.04 site-scoped Redis operation evidence
+
+On 2026-09-26, `tests/acceptance/run-hetzner-redis-gate.sh` created a new
+disposable Hetzner `cx23` VM in `nbg1` running Ubuntu 24.04.4 LTS. The operator
+used a temporary SSH key with a temporary `known_hosts`; the acceptance runner
+deleted the VM, Hetzner SSH key, local private key, and temporary GitHub deploy
+keys after the run. No existing VM was reimaged or changed.
+
+The test used `jcergolj/simpletimer` master revision
+`531ff54fa2f7083532fc4e28aaba4e91385de463` (Laravel 13.32.0), PHP 8.5.11, Redis
+7.0.15, and Deployer 8.0.5. Two independently provisioned sites shared that
+repository and server:
+
+| Site ID | Cache DB | Runtime DB | Worker |
+| --- | ---: | ---: | --- |
+| `redis-one` | 1 | 2 | Queue |
+| `redis-two` | 3 | 4 | Queue |
+
+After separately provisioning and deploying both sites, the test inserted
+distinct entries through Laravel's Redis cache store, queued one delayed Laravel
+closure job per site, created and reread one Redis-backed Laravel session per
+site, and wrote a Horizon-state marker into each runtime database. Running
+`php artisan cache:clear` for `redis-one` removed its cache entry; `redis-two`'s
+cache entry remained. Both queue sizes remained 1, both sessions retained their
+values, and both runtime-database markers remained intact. The Horizon marker is
+a direct Redis sentinel; this scenario did not run the Horizon package/daemon.
+
+The scenario then ran a separate Deployer release for `redis-one`. Its queue
+worker changed PID from 20527 to 21481; `redis-two` remained RUNNING with PID
+19854. Both site URLs returned HTTPS 200 before the state checks. The detailed
+run summary is at `/tmp/metator-redis-evidence.qlHjrD/ubuntu-24.04/redis-isolation.txt`;
+`target.txt` records the Ubuntu image, PHP, and systemd versions.
+
 ## Recommendation for the follow-up
 
 Deployer 8.0.5 is a good fit for the separate release workflow: its Laravel
@@ -202,6 +235,7 @@ provision recipe or retire `RemoteScriptRunner`/selected bootstrap steps as part
 of #100. Refine #100 into a bounded follow-up for the generated deployment
 interface, migration instructions, and capability-specific checks. Remove
 provisioning code only in later slices that identify and verify a specific
-duplicate while preserving the existing ADR guarantees. Broader v1 site-scoped
-Redis operations remain a separate release-gate requirement. Keep Ubuntu 26.04
-distinct from the support baseline in ADR 0014 until that decision is made.
+duplicate while preserving the existing ADR guarantees. The live Redis cache,
+queue, session, and worker-isolation checks are recorded above; the Horizon
+marker was not a live Horizon process test. Keep Ubuntu 26.04 distinct from the
+support baseline in ADR 0014 until that decision is made.
