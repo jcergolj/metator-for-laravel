@@ -32,3 +32,33 @@ command/results evidence to `METATOR_ACCEPTANCE_EVIDENCE_DIR`.
 Provider credentials and disposable infrastructure are intentionally outside
 the normal pull-request CI job. A release run must retain the provider, image,
 package/PHP versions, applications, commands, and results with the evidence.
+
+## Hetzner Redis isolation run
+
+The focused Redis gate uses `tests/acceptance/run-hetzner-redis-gate.sh`. It
+creates a new Ubuntu 24.04 `cx23` VM in `nbg1`, creates an isolated local SSH
+home, provisions two `jcergolj/simpletimer` sites with separate Redis cache and
+runtime databases, and deletes the VM and temporary GitHub deploy keys after
+the run. Its SSH/scp wrappers use only the temporary key and temporary
+`known_hosts`, leaving the operator's SSH configuration untouched. It does not
+reimage or modify an existing server. The server requires
+`HCLOUD_TOKEN`; GitHub deploy-key registration requires `GH_TOKEN` or an active
+`gh auth` session with permission to administer deploy keys for the fixture
+repository. Evidence defaults to a retained temporary directory and its path is
+printed by the runner.
+
+Run it with:
+
+```bash
+tests/acceptance/run-hetzner-redis-gate.sh
+```
+
+The scenario clears the Horizon site's Laravel cache, checks that the queue
+site's cache remains, verifies one delayed Laravel queue job and a Redis-backed
+Laravel session survive for both sites, and confirms Horizon remains running.
+An acceptance-only Deployer hook installs Horizon into the disposable release;
+the fixture repository itself is not modified. It then performs another
+queue-site Deployer release and verifies that the Horizon worker PID is
+unchanged. The focused wrapper defaults to Ubuntu 24.04; override
+`METATOR_ACCEPTANCE_UBUNTU_RELEASES` only when the selected provider supports
+the requested release.

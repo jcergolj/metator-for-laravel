@@ -31,7 +31,7 @@ run_release() (
     local target_file
     mkdir -p "$release_evidence"
     target_file="$(mktemp)"
-    # shellcheck disable=SC2317
+    # shellcheck disable=SC2317,SC2329
     cleanup() {
         local status=$?
         local destroy_status=0
