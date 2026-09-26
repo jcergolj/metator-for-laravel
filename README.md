@@ -99,6 +99,20 @@ Run the commands in this order:
 `prepare-server` installs shared packages and capabilities. `provision` creates
 only the selected site's resources and reuses the prepared baseline.
 
+### Who owns each operation
+
+| Operation | Responsibility |
+| --- | --- |
+| `metator:prepare-server` | Prepare shared server capabilities such as PHP, Redis, Caddy, and Supervisor when the server needs them. |
+| `metator:provision` | Configure the selected site's ownership, database and Redis allocations, GitHub access, web route, scheduler, worker program, permissions, custom steps, and readiness. It does not deploy application code. |
+| `vendor/bin/dep deploy production` | Run the Laravel release lifecycle: fetch code, install Composer dependencies, migrate, optimize/cache, activate the release, clean old releases, and activate or restart only the selected site's workers. It does not prepare or provision the server. |
+
+The generated `deploy.php` reads the selected site configuration for the site
+identity, repository, SSH target, deployment user and path, PHP runtime, database
+mode, and worker mode. The operator keeps the recipe editable for branch choice,
+application builds, and other release-specific tasks. Metator's bootstrap
+scripts remain responsible for infrastructure and site-owned resources.
+
 The remote commands:
 
 - Upload the exact local `scripts/` directory
