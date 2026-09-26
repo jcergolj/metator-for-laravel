@@ -34,6 +34,7 @@ $catalogue->validateSelection($availableSteps, $selectedSteps);
 
 $domain = $siteId.'.'.$serverIp.'.sslip.io';
 $configName = 'acceptance';
+$workerType = $siteId === 'redis-two' ? 'horizon' : 'queue';
 $placeholders = [
     '__APP_NAME__' => basename($projectRoot),
     '__CONFIG_FILE__' => 'metator.'.$configName.'.php',
@@ -50,9 +51,9 @@ $placeholders = [
     '__CONFIGURE_DEPLOY_USER_LOGIN__' => 'true',
     '__USE_CLOUDFLARE__' => 'false',
     '__USE_SCHEDULER__' => 'false',
-    '__WORKER_TYPE__' => 'queue',
+    '__WORKER_TYPE__' => $workerType,
     '__USE_QUEUE__' => 'true',
-    '__USE_HORIZON__' => 'false',
+    '__USE_HORIZON__' => $workerType === 'horizon' ? 'true' : 'false',
     '__USE_REDIS__' => 'true',
     '__REDIS_CAPABILITY__' => 'queue',
 ];

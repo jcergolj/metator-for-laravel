@@ -77,6 +77,18 @@ PY
     run_logged "$app_directory" "$log_file" php artisan key:generate --force --no-interaction
     php "$ROOT_DIR/tests/acceptance/fixtures/generate-redis-site.php" \
         "$app_directory" "$ROOT_DIR" "$site_id" "$HOST" "$USER" | tee -a "$log_file"
+    if [[ "$site_id" == redis-two ]]; then
+        cat >> "$app_directory/deploy.php" <<'PHP'
+
+task('acceptance:install-horizon', function (): void {
+    run('cd {{release_path}} && composer require laravel/horizon --no-interaction --no-progress --no-install --update-no-dev');
+    run('cd {{release_path}} && composer install --no-dev --no-interaction --prefer-dist --no-progress');
+    run('cd {{release_path}} && {{bin/php}} artisan horizon:install --no-interaction');
+});
+
+after('deploy:vendors', 'acceptance:install-horizon');
+PHP
+    fi
 }
 
 provision_site() {
@@ -180,15 +192,16 @@ for pair in "redis-one:$one_runtime" "redis-two:$two_runtime"; do
 done
 
 printf '\n== Clear one site cache and verify isolation ==\n'
-remote 'cd /var/www/redis-one/current && sudo -u www-data /usr/bin/php8.5 artisan cache:clear'
-one_cache_value="$(remote 'cd /var/www/redis-one/current && sudo -u www-data /usr/bin/php8.5 /tmp/metator-redis-cache-probe.php has metator-acceptance-cache')"
-two_cache_value="$(remote 'cd /var/www/redis-two/current && sudo -u www-data /usr/bin/php8.5 /tmp/metator-redis-cache-probe.php get metator-acceptance-cache')"
-[[ "$one_cache_value" == missing ]]
-[[ "$two_cache_value" == redis-two-cache ]]
+remote 'cd /var/www/redis-two/current && sudo -u www-data /usr/bin/php8.5 artisan cache:clear'
+one_cache_value="$(remote 'cd /var/www/redis-one/current && sudo -u www-data /usr/bin/php8.5 /tmp/metator-redis-cache-probe.php get metator-acceptance-cache')"
+two_cache_value="$(remote 'cd /var/www/redis-two/current && sudo -u www-data /usr/bin/php8.5 /tmp/metator-redis-cache-probe.php has metator-acceptance-cache')"
+[[ "$one_cache_value" == redis-one-cache ]]
+[[ "$two_cache_value" == missing ]]
 [[ "$(remote 'cd /var/www/redis-one/current && sudo -u www-data /usr/bin/php8.5 /tmp/metator-redis-cache-probe.php queue-size ignored')" == "$one_queue_size" ]]
 [[ "$(remote 'cd /var/www/redis-two/current && sudo -u www-data /usr/bin/php8.5 /tmp/metator-redis-cache-probe.php queue-size ignored')" == "$two_queue_size" ]]
 [[ "$(remote "cd /var/www/redis-one/current && sudo -u www-data /usr/bin/php8.5 /tmp/metator-redis-cache-probe.php session-get metator-acceptance-session ${one_session_id}")" == redis-one-session ]]
 [[ "$(remote "cd /var/www/redis-two/current && sudo -u www-data /usr/bin/php8.5 /tmp/metator-redis-cache-probe.php session-get metator-acceptance-session ${two_session_id}")" == redis-two-session ]]
+remote 'cd /var/www/redis-two/current && sudo -u www-data /usr/bin/php8.5 artisan horizon:status'
 for pair in "redis-one:$one_runtime" "redis-two:$two_runtime"; do
     site_id="${pair%%:*}"
     runtime_db="${pair#*:}"
@@ -219,6 +232,7 @@ two_worker_after="$(get_worker_pid redis-two)"
     printf 'redis_one_cache_after_clear=%s\nredis_two_cache_after_clear=%s\n' "$one_cache_value" "$two_cache_value"
     printf 'redis_one_queue_size_after_clear=%s\nredis_two_queue_size_after_clear=%s\n' "$one_queue_size" "$two_queue_size"
     printf 'redis_one_session_after_clear=preserved\nredis_two_session_after_clear=preserved\n'
+    printf 'redis_two_horizon_status_after_cache_clear=running\n'
     printf 'redis_one_worker_pid_before=%s\nredis_one_worker_pid_after=%s\n' "$one_worker_before" "$one_worker_after"
     printf 'redis_two_worker_pid_before=%s\nredis_two_worker_pid_after=%s\n' "$two_worker_before" "$two_worker_after"
     printf 'result=passed\n'

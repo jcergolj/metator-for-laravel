@@ -203,21 +203,25 @@ repository and server:
 | Site ID | Cache DB | Runtime DB | Worker |
 | --- | ---: | ---: | --- |
 | `redis-one` | 1 | 2 | Queue |
-| `redis-two` | 3 | 4 | Queue |
+| `redis-two` | 3 | 4 | Horizon |
 
 After separately provisioning and deploying both sites, the test inserted
 distinct entries through Laravel's Redis cache store, queued one delayed Laravel
 closure job per site, created and reread one Redis-backed Laravel session per
-site, and wrote a Horizon-state marker into each runtime database. Running
-`php artisan cache:clear` for `redis-one` removed its cache entry; `redis-two`'s
-cache entry remained. Both queue sizes remained 1, both sessions retained their
-values, and both runtime-database markers remained intact. The Horizon marker is
-a direct Redis sentinel; this scenario did not run the Horizon package/daemon.
+site, and ran a Horizon worker on `redis-two`. Because the public SimpleTimer
+fixture does not include Horizon, an acceptance-only Deployer hook added
+`laravel/horizon` 5.50.0 and published its config into the disposable release;
+it did not change the fixture repository. Running `php artisan cache:clear` for
+`redis-two` removed its cache entry while `redis-one`'s cache entry remained.
+Both queue sizes remained 1, both sessions retained their values, and
+`php artisan horizon:status` continued to report Horizon running after the cache
+clear.
 
 The scenario then ran a separate Deployer release for `redis-one`. Its queue
-worker changed PID from 20527 to 21481; `redis-two` remained RUNNING with PID
-19854. Both site URLs returned HTTPS 200 before the state checks. The detailed
-run summary is at `/tmp/metator-redis-evidence.qlHjrD/ubuntu-24.04/redis-isolation.txt`;
+worker changed PID from 17738 to 21661; `redis-two`'s Horizon worker remained
+RUNNING with PID 19818. Both site URLs returned HTTPS 200 before the state
+checks. The detailed run summary is at
+`/tmp/metator-redis-evidence.VuXUqz/ubuntu-24.04/redis-isolation.txt`;
 `target.txt` records the Ubuntu image, PHP, and systemd versions.
 
 ## Recommendation for the follow-up
@@ -236,6 +240,6 @@ of #100. Refine #100 into a bounded follow-up for the generated deployment
 interface, migration instructions, and capability-specific checks. Remove
 provisioning code only in later slices that identify and verify a specific
 duplicate while preserving the existing ADR guarantees. The live Redis cache,
-queue, session, and worker-isolation checks are recorded above; the Horizon
-marker was not a live Horizon process test. Keep Ubuntu 26.04 distinct from the
-support baseline in ADR 0014 until that decision is made.
+queue, session, Horizon, and worker-isolation checks are recorded above. Keep
+Ubuntu 26.04 distinct from the support baseline in ADR 0014 until that decision
+is made.

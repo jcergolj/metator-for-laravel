@@ -53,11 +53,12 @@ Run it with:
 tests/acceptance/run-hetzner-redis-gate.sh
 ```
 
-The scenario clears the first site's Laravel cache, checks that the second
-site's cache remains, verifies one delayed Laravel queue job and a
-Redis-backed Laravel session survive for both sites, and checks a separate
-Horizon-state key in each site's runtime database. It then performs another
-first-site Deployer release and verifies that only its worker PID changes. The
-focused wrapper defaults to Ubuntu 24.04; override
+The scenario clears the Horizon site's Laravel cache, checks that the queue
+site's cache remains, verifies one delayed Laravel queue job and a Redis-backed
+Laravel session survive for both sites, and confirms Horizon remains running.
+An acceptance-only Deployer hook installs Horizon into the disposable release;
+the fixture repository itself is not modified. It then performs another
+queue-site Deployer release and verifies that the Horizon worker PID is
+unchanged. The focused wrapper defaults to Ubuntu 24.04; override
 `METATOR_ACCEPTANCE_UBUNTU_RELEASES` only when the selected provider supports
 the requested release.
