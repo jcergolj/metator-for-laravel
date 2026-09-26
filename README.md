@@ -82,8 +82,42 @@ Use `--force` only when deliberately regenerating an existing installation:
 php artisan metator:install --force
 ```
 
-Forced regeneration removes only files tracked in
-`scripts/.metator-manifest.json`. Untracked custom files are preserved.
+Within `scripts/steps/`, forced regeneration replaces or removes only files
+tracked in `scripts/.metator-manifest.json`. Untracked custom step files are
+preserved.
+
+### Updating an existing installation
+
+`metator:install` exits with an error if the selected site configuration already
+exists, unless `--force` is supplied. In other cases, existing generated output
+files are skipped without `--force`. Forced regeneration replaces the selected
+site configuration, the generated `deploy.php`, bootstrap libraries and
+instructions, and `scripts/.env.example`. Back up and compare customized
+`deploy.php` content before restoring or merging application-specific tasks.
+
+The selected-step manifest controls replacement of generated
+`scripts/steps/*.sh` files. The package manifest controls updates to package-owned
+files in `metator/steps/`; custom files in that local catalogue are preserved and
+can be selected again. A forced install with Cloudflare deselected removes the
+local `metator.<name>.local.php` companion file, so save any credentials you
+still need before changing that selection.
+
+For a deliberate scaffold upgrade:
+
+1. Back up the site configuration, local secret companion file, customized
+   `deploy.php`, custom `metator/steps/` files, and `.env.production.local`.
+2. Update the package and run `php artisan metator:install --force`, keeping the
+   same configuration name and site ID for the existing site.
+3. Compare the regenerated `deploy.php` with the backup and merge required
+   release-specific tasks. Confirm custom steps and local environment values are
+   present before continuing.
+4. Run `metator:prepare-server` only if the shared baseline needs a capability
+   or repair; then run `metator:provision --config=...` for the selected site.
+5. Review the readiness summary and run `vendor/bin/dep deploy production`
+   separately. Scaffolding installation itself makes no remote changes.
+
+Forced regeneration changes local scaffolding only. Shared preparation,
+provisioning, and application deployment remain separate operator-run actions.
 
 ## Server Workflow
 
