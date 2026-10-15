@@ -62,6 +62,26 @@ try {
     $files->delete($root.'/scripts/steps/02-deployer-login.sh');
     $run('provision');
     check(! str_contains($files->get($root.'/home/archive-list'), '.client-public-key'), 'Unselected login should not require a key');
+
+    $files->put($root.'/bin/scp', "#!/bin/bash\nexit 0\n");
+    $files->put($root.'/bin/ssh', <<<'BASH'
+#!/bin/bash
+set -eu
+[[ "$1" == '-tt' ]] || { echo 'Remote sudo requires a terminal' >&2; exit 1; }
+[[ "$2" == '-o' && "$3" == 'BatchMode=yes' ]] || exit 2
+[[ "$4" == 'root@example.test' ]] || exit 3
+[[ "$5" == *'METATOR_OPERATION='* ]] || exit 4
+echo 'remote output'
+exit 23
+BASH
+    );
+    chmod($root.'/bin/ssh', 0700);
+    $output = '';
+    $status = $runner->run($site, 'prepare-server', $root.'/scripts', static function (string $chunk) use (&$output): void {
+        $output .= $chunk;
+    });
+    check($status === 23, 'TTY-enabled SSH must preserve the remote exit status');
+    check(str_contains($output, 'remote output'), 'TTY-enabled SSH must stream remote output');
 } finally {
     putenv($home === false ? 'HOME' : 'HOME='.$home);
     putenv($path === false ? 'PATH' : 'PATH='.$path);

@@ -13,8 +13,7 @@ class RemoteScriptRunner
 
     public function __construct(
         protected Filesystem $files,
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $site */
     public function run(array $site, string $operation, string $scriptsPath, callable $output, ?string $environmentInput = null): int
@@ -69,7 +68,7 @@ class RemoteScriptRunner
             );
 
             return $this->execute(
-                'ssh -o BatchMode=yes '.escapeshellarg($target).' '.escapeshellarg($remoteCommand),
+                'ssh -tt -o BatchMode=yes '.escapeshellarg($target).' '.escapeshellarg($remoteCommand),
                 $output,
             );
         } finally {
@@ -84,8 +83,7 @@ class RemoteScriptRunner
     {
         $home = getenv('HOME') ?: '';
         $paths = glob($home.'/.ssh/*.pub') ?: [];
-        usort($paths, static fn (string $left, string $right): int =>
-            [str_starts_with(basename($left), 'id_') ? 0 : 1, $left]
+        usort($paths, static fn (string $left, string $right): int => [str_starts_with(basename($left), 'id_') ? 0 : 1, $left]
             <=> [str_starts_with(basename($right), 'id_') ? 0 : 1, $right]);
         foreach ($paths as $path) {
             if (is_file($path)) {
