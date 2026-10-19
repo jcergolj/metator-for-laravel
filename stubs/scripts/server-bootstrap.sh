@@ -17,6 +17,7 @@ if [[ "$EUID" -ne 0 ]]; then
         CLIENT_PUBLIC_KEY="${CLIENT_PUBLIC_KEY:-}" \
         bash "$SCRIPT_DIR/server-bootstrap.sh" "$@"
 fi
+trap 'rm -f "$SCRIPT_DIR/.env-seed" "$SCRIPT_DIR/.cloudflare.env"' EXIT
 exec 9>/var/lock/metator-bootstrap.lock
 if ! flock -n 9; then
     printf 'Another application bootstrap is running on this server. Try again when it finishes.\n' >&2
@@ -34,7 +35,6 @@ if [[ -f "$SCRIPT_DIR/.cloudflare.env" ]]; then
     # The local runner transfers this short-lived file only for the selected DNS capability.
     # shellcheck disable=SC1091
     source "$SCRIPT_DIR/.cloudflare.env"
-    trap 'rm -f "$SCRIPT_DIR/.cloudflare.env"' EXIT
 fi
 
 require_commands ssh-keyscan systemctl sed sort tail
@@ -52,7 +52,7 @@ USE_HORIZON='__USE_HORIZON__'
 USE_REDIS='__USE_REDIS__'
 REDIS_CAPABILITY='__REDIS_CAPABILITY__'
 DATABASE_DRIVER='__DATABASE_DRIVER__'
-ENV_EXAMPLE_FILE="$SCRIPT_DIR/.env.example"
+ENV_SEED_FILE="$SCRIPT_DIR/.env-seed"
 
 PHP_VERSION='__PHP_VERSION__'
 if [[ "$PHP_VERSION" == __PHP_"VERSION__" ]]; then

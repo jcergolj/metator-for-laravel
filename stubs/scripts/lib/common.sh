@@ -303,33 +303,78 @@ ensure_cloudflare_config() {
 }
 
 set_env_value() {
-    local key="$1" value="$2" escaped temporary source_file line
+    local key="$1" value="$2" escaped temporary source_file final_newline=true
     escaped="${value//\\/\\\\}"
     escaped="${escaped//\"/\\\"}"
     escaped="${escaped//\$/\\\$}"
     local desired="${key}=\"${escaped}\""
     local env_file="${ENV_FILE:-$APP_FOLDER/shared/.env}"
-    if sudo grep -Fxq "$desired" "$env_file"; then
-        return
-    fi
-    if sudo grep -qE "^${key}=" "$env_file"; then
-        temporary="$(mktemp)"
-        source_file="$(mktemp)"
-        sudo sed -n '1,$p' "$env_file" | tee "$source_file" >/dev/null
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            if [[ "$line" == "$key="* ]]; then
-                printf '%s\n' "${key}=\"${escaped}\""
-            else
-                printf '%s\n' "$line"
-            fi
-        done < "$source_file" > "$temporary"
-        sudo cp "$temporary" "$env_file"
+    temporary="$(mktemp)" || return 1
+    source_file="$(mktemp)" || { rm -f "$temporary"; return 1; }
+    # The destination is our private temporary file, not the privileged source.
+    # shellcheck disable=SC2024
+    if ! sudo cat "$env_file" > "$source_file"; then
         rm -f "$temporary" "$source_file"
-    else
-        printf '%s\n' "${key}=\"${escaped}\"" |
-            sudo tee -a "$env_file" >/dev/null
+        return 1
     fi
-    ENV_UPDATED=true
+    [[ -z "$(tail -c 1 "$source_file")" ]] || final_newline=false
+    # Track quoted multiline values so embedded KEY= text is never an assignment.
+    # Environment variables avoid awk -v interpreting backslashes in secrets.
+    if ! METATOR_ENV_KEY="$key" METATOR_ENV_ASSIGNMENT="$desired" METATOR_ENV_FINAL_NEWLINE="$final_newline" awk '
+        function remaining_quote(value, quote, i, character, escaped) {
+            for (i = 1; i <= length(value); i++) {
+                character = substr(value, i, 1)
+                if (escaped) { escaped = 0; continue }
+                if (quote == "\"" && character == "\\") { escaped = 1; continue }
+                if (character == quote) return ""
+            }
+            return quote
+        }
+        function emit(line) {
+            if (emitted++) output = output "\n"
+            output = output line
+        }
+        BEGIN { key = ENVIRON["METATOR_ENV_KEY"]; desired = ENVIRON["METATOR_ENV_ASSIGNMENT"] }
+        {
+            if (quote != "") {
+                if (!replacing) emit($0)
+                quote = remaining_quote($0, quote)
+                next
+            }
+            replacing = 0
+            equals = index($0, "=")
+            if (equals) {
+                name = substr($0, 1, equals - 1)
+                sub(/^[[:space:]]*/, "", name)
+                sub(/^export[[:space:]]+/, "", name)
+                sub(/[[:space:]]*$/, "", name)
+                if (name ~ /^".*"$/ || name ~ /^\047.*\047$/) name = substr(name, 2, length(name) - 2)
+                if (name ~ /^[A-Za-z_][A-Za-z0-9_]*$/) {
+                    value = substr($0, equals + 1)
+                    sub(/^[[:space:]]*/, "", value)
+                    first = substr(value, 1, 1)
+                    if (first == "\"" || first == "\047") quote = remaining_quote(substr(value, 2), first)
+                    replacing = name == key
+                }
+            }
+            if (replacing) {
+                if (!replaced++) emit(desired)
+            } else emit($0)
+        }
+        END {
+            if (!replaced) emit(desired)
+            printf "%s", output
+            if (!replaced || ENVIRON["METATOR_ENV_FINAL_NEWLINE"] == "true") printf "\n"
+        }
+    ' "$source_file" > "$temporary"; then
+        rm -f "$temporary" "$source_file"
+        return 1
+    fi
+    if ! cmp -s "$temporary" "$source_file"; then
+        sudo cp "$temporary" "$env_file" || { rm -f "$temporary" "$source_file"; return 1; }
+        ENV_UPDATED=true
+    fi
+    rm -f "$temporary" "$source_file"
 }
 
 merge_env_example() {
@@ -362,12 +407,8 @@ ensure_production_env() {
     if env_key_exists APP_KEY "$env_file"; then
         read_env_value APP_KEY "$env_file" app_key
     fi
-    if [[ -z "$app_key" || "$app_key" == __* ]]; then
+    if [[ "$ENV_FILE_CREATED" == true || -z "$app_key" || "$app_key" == __* ]]; then
         set_env_value APP_KEY "base64:$(openssl rand -base64 32 | tr -d '\n')"
-    fi
-    if sudo grep -qE '__[A-Z0-9_]+__' "$env_file"; then
-        die "Unresolved placeholder remains in $env_file"
-        return 1
     fi
 }
 

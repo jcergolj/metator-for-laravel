@@ -32,11 +32,17 @@ class RemoteScriptRunner
             if (! $this->files->copyDirectory($scriptsPath, $staging)) {
                 throw new RuntimeException('Could not stage the generated scripts.');
             }
-            $this->files->delete([$staging.'/.client-public-key', $staging.'/.cloudflare.env', $staging.'/.env-input']);
+            chmod($staging, 0700);
+            $this->files->delete([$staging.'/.client-public-key', $staging.'/.cloudflare.env', $staging.'/.env-input', $staging.'/.env-seed']);
             if ($environmentInput !== null && ! $this->files->copy($environmentInput, $staging.'/.env-input')) {
                 throw new RuntimeException('Could not stage the environment input.');
             }
             if ($operation === 'provision') {
+                $environment = dirname($scriptsPath).'/.env';
+                if (! is_file($environment) || ! $this->files->copy($environment, $staging.'/.env-seed')) {
+                    throw new RuntimeException('Could not read the local application .env for provisioning.');
+                }
+                chmod($staging.'/.env-seed', 0600);
                 $this->writeCloudflareSecrets($staging, $site);
                 if (is_file($staging.'/steps/02-deployer-login.sh')) {
                     $this->writeClientPublicKey($staging);

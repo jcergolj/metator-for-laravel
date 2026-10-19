@@ -158,8 +158,8 @@ PHP_VERSION=8.4
 # Existing protected environment/database files must not be truncated.
 printf 'APP_KEY=keep-me\nDB_CONNECTION=sqlite\n' > "$TEST_DIR$APP_FOLDER/shared/.env"
 printf 'existing database bytes\n' > "$TEST_DIR$APP_FOLDER/shared/database/database.sqlite"
-ENV_EXAMPLE_FILE="$TEST_DIR/example"
-printf 'APP_KEY=\nDB_CONNECTION=sqlite\n' > "$ENV_EXAMPLE_FILE"
+ENV_SEED_FILE="$TEST_DIR/example"
+printf 'APP_KEY=\nDB_CONNECTION=sqlite\n' > "$ENV_SEED_FILE"
 DATABASE_DRIVER=sqlite
 PHP_PACKAGE_PREFIX=php8.4
 sqlite3() { :; }
@@ -191,16 +191,43 @@ if step_caddy </dev/null; then exit 1; fi
 # New applications receive distinct shared Redis/cache/Horizon namespaces.
 APP_FOLDER=/var/www/new-app
 APP_NAME=new-app
-ENV_EXAMPLE_FILE="$TEST_DIR/example"
-printf 'APP_NAME=Laravel\nAPP_ENV=local\nAPP_DEBUG=true\nREDIS_PREFIX=laravel_\n' > "$ENV_EXAMPLE_FILE"
+ENV_SEED_FILE="$TEST_DIR/example"
+USE_REDIS=true
+REDIS_CONFIG_READY=true
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_CACHE_DB=1
+REDIS_RUNTIME_DB=2
+REDIS_CAPABILITY=queue
+printf '# Local application\nAPP_NAME=Laravel\nAPP_ENV=local\nAPP_DEBUG=true\nAPP_KEY=base64:local-key\nAPP_URL=http://localhost\nREDIS_PREFIX=laravel_\n\n# Custom settings\nCUSTOM_SECRET="keep this value"\nCUSTOM_LITERAL="literal __DOMAIN__ value"\n' > "$ENV_SEED_FILE"
+printf 'DB_URL=mysql://local:secret@localhost/local\nREDIS_URL=redis://local:secret@localhost:6380/0\nREDIS_PASSWORD=local-secret\nREDIS_USERNAME=local-user\n' >> "$ENV_SEED_FILE"
 step_shared_env <<< ''
 grep -qx 'APP_ENV="production"' "$TEST_DIR$APP_FOLDER/shared/.env"
 grep -qx 'APP_DEBUG="false"' "$TEST_DIR$APP_FOLDER/shared/.env"
+grep -qx "APP_URL=\"https://${DOMAIN}\"" "$TEST_DIR$APP_FOLDER/shared/.env"
+grep -qx 'APP_KEY="base64:.*"' "$TEST_DIR$APP_FOLDER/shared/.env"
+if grep -q 'local-key' "$TEST_DIR$APP_FOLDER/shared/.env"; then
+    printf 'Local application key survived production initialization\n' >&2
+    exit 1
+fi
+grep -Fxq '# Custom settings' "$TEST_DIR$APP_FOLDER/shared/.env"
+grep -Fxq 'CUSTOM_SECRET="keep this value"' "$TEST_DIR$APP_FOLDER/shared/.env"
+grep -Fxq 'CUSTOM_LITERAL="literal __DOMAIN__ value"' "$TEST_DIR$APP_FOLDER/shared/.env"
+for key in DB_URL REDIS_URL REDIS_PASSWORD REDIS_USERNAME; do
+    grep -Fxq "${key}=\"\"" "$TEST_DIR$APP_FOLDER/shared/.env"
+done
+grep -Fxq 'REDIS_HOST="127.0.0.1"' "$TEST_DIR$APP_FOLDER/shared/.env"
+grep -Fxq 'QUEUE_CONNECTION="redis"' "$TEST_DIR$APP_FOLDER/shared/.env"
 for prefix in REDIS_PREFIX CACHE_PREFIX HORIZON_PREFIX; do
     grep -qx "${prefix}=\"metator_new-app_\"" "$TEST_DIR$APP_FOLDER/shared/.env"
 done
+environment_before="$(<"$TEST_DIR$APP_FOLDER/shared/.env")"
+printf '\nNEW_LOCAL_SECRET=do-not-merge\n' >> "$ENV_SEED_FILE"
+step_shared_env <<< ''
+[[ "$(<"$TEST_DIR$APP_FOLDER/shared/.env")" == "$environment_before" ]]
 APP_FOLDER=/var/www/billing.app
 APP_NAME=billing.app
+USE_REDIS=false
 
 # Scheduler files are site-owned, explicit-versioned, and no-op safe.
 USE_SCHEDULER=true

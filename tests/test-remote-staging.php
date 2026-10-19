@@ -27,7 +27,7 @@ try {
     $files->put($root.'/scripts/server-bootstrap.sh', "#!/bin/bash\n");
     $files->put($root.'/scripts/steps/02-deployer-login.sh', '# selected');
     // Stop before SSH; inspect the actual archive passed to scp.
-    $files->put($root.'/bin/scp', "#!/bin/bash\nset -eu\ntar -tzf \"\$4\" > \"\$HOME/archive-list\"\nexit 19\n");
+    $files->put($root.'/bin/scp', "#!/bin/bash\nset -eu\ntar -tzf \"\$4\" > \"\$HOME/archive-list\"\nif grep -qx './.env-seed' \"\$HOME/archive-list\"; then\n  tar -xOzf \"\$4\" ./.env-seed > \"\$HOME/environment-seed\"\n  tar -tvzf \"\$4\" ./.env-seed > \"\$HOME/environment-mode\"\nfi\nexit 19\n");
     chmod($root.'/bin/scp', 0700);
     putenv('HOME='.$root.'/home');
     putenv('PATH='.$root.'/bin:'.$path);
@@ -48,8 +48,16 @@ try {
     check(str_contains($files->get($root.'/home/archive-list'), '.env-input'), 'Environment input missing');
 
     $files->put($root.'/home/.ssh/named-key.pub', 'ssh-ed25519 AAAATEST test key');
+    $localEnvironment = "# Custom application settings\nAPP_ENV=local\nAPP_DEBUG=true\nAPP_KEY=base64:local-key\n\nCUSTOM_SECRET='literal __DOMAIN__ value'\n";
+    $files->put($root.'/.env', $localEnvironment);
     $run('provision');
     check(str_contains($files->get($root.'/home/archive-list'), '.client-public-key'), 'Provisioning key missing');
+    check($files->exists($root.'/home/environment-seed'), 'Local environment seed missing');
+    check($files->get($root.'/home/environment-seed') === $localEnvironment, 'Local environment must be transferred byte for byte');
+    check(str_starts_with($files->get($root.'/home/environment-mode'), '-rw-------'), 'Environment seed must have private permissions');
+    check(! $files->exists($root.'/scripts/.env-seed'), 'Secrets must not be written into generated scaffolding');
+    $run('prepare-server');
+    check(! str_contains($files->get($root.'/home/archive-list'), '.env-seed'), 'Preparation must not transfer the local environment');
     $run('provision', $root.'/input');
     check(str_contains($files->get($root.'/home/archive-list'), '.client-public-key'), 'Key missing when supplying environment input');
     $files->delete($root.'/home/.ssh/named-key.pub');
@@ -62,6 +70,13 @@ try {
     $files->delete($root.'/scripts/steps/02-deployer-login.sh');
     $run('provision');
     check(! str_contains($files->get($root.'/home/archive-list'), '.client-public-key'), 'Unselected login should not require a key');
+    $files->delete($root.'/.env');
+    try {
+        $run('provision');
+        throw new LogicException('Missing local environment should fail');
+    } catch (RuntimeException $exception) {
+        check(str_contains($exception->getMessage(), 'local application .env'), 'Missing local environment must have an actionable error');
+    }
 
     $files->put($root.'/bin/scp', "#!/bin/bash\nexit 0\n");
     $files->put($root.'/bin/ssh', <<<'BASH'

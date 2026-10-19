@@ -316,10 +316,38 @@ work.
 
 ## Updating Environment Values
 
-Before the first deployment, review the generated `scripts/.env.example` for
-application-specific production values. Provisioning initializes the remote
-environment noninteractively and reports that review guidance locally; it does
-not open an editor or wait for input on the server.
+For a new site, provisioning copies the application's current local `.env`,
+preserving comments, layout, and application-specific values. It then applies
+`APP_ENV=production`, `APP_DEBUG=false`, the site's HTTPS `APP_URL`, and the
+provisioned database and Redis settings/prefixes. It generates a separate
+production `APP_KEY` rather than reusing the local key.
+Local `DB_URL` is cleared so it cannot override the provisioned database. When
+using MariaDB, local `DB_SOCKET` is also cleared to use the provisioned TCP host.
+When using provisioned Redis, local Redis URLs and credentials are cleared as well.
+
+New site environments also receive capability-based defaults:
+
+| Setting | Production value |
+| --- | --- |
+| Database | SQLite's shared database path, or local MariaDB host, port, site-owned database/user, and generated password |
+| Cache and sessions | `file` without Redis; `redis` when Redis is selected |
+| Queue | `sync` without workers; `database` for standard workers; `redis` with the Redis queues capability |
+| Connection routing | Database queues use the selected database; Redis cache uses `cache`, while sessions, queue jobs, and cache locks use `default` |
+| Session cookies | Secure, host-only, with a unique `metator_<site-id>_session` name |
+| Logging | `LOG_LEVEL=info` |
+
+Database-backed workers require the application's queue tables to be migrated
+through the normal deployment lifecycle. These defaults do not guess mail,
+filesystem, broadcasting, or third-party service credentials.
+
+The local `.env` is required when running `metator:provision`. It is transferred
+through temporary, permission-restricted staging, not written into generated
+scaffolding. The generated `scripts/.env.example` is not the provisioning input.
+Ordinary reruns preserve remote application values and do not merge local changes.
+
+Review application-specific values before the first deployment: local mail,
+storage, payment, and other service credentials may not be suitable for production.
+Provisioning does not open an editor or wait for input on the server.
 
 Put application-specific production values in a Git-ignored local dotenv file:
 

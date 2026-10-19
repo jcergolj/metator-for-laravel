@@ -30,10 +30,16 @@ merge_env_example "$TEST_DIR/example" "$TEST_DIR/env"
 cmp "$TEST_DIR/before" "$TEST_DIR/env"
 [[ "$ENV_UPDATED" == false ]]
 
+# Appending a missing production setting must not corrupt the last custom value.
+printf 'CUSTOM_SECRET=keep-me' > "$TEST_DIR/env"
+set_env_value APP_ENV production
+grep -Fxq 'CUSTOM_SECRET=keep-me' "$TEST_DIR/env"
+grep -Fxq 'APP_ENV="production"' "$TEST_DIR/env"
+
 # Provisioning reports local review guidance; it never starts an editor or reads
 # interactive input on the remote host.
 shared_env_step="$(<"$SHARED_ENV_STEP")"
-[[ "$shared_env_step" == *'local scripts/.env.example'* ]]
+[[ "$shared_env_step" == *'local .env'* ]]
 [[ "$shared_env_step" == *'metator:update-env'* ]]
 [[ "$shared_env_step" != *'nano'* ]]
 [[ "$shared_env_step" != *'read -r -p'* ]]
