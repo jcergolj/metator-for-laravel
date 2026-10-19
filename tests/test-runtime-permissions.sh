@@ -53,7 +53,13 @@ real_sudo() {
         command "$@"
     fi
 }
-sudo() { real_sudo "$@"; }
+sudo() {
+    if [[ "$1" == -u && "$2" == www-data ]]; then
+        if [[ "${fail_runtime_probe:-false}" == true && "$3" == bash ]]; then return 1; fi
+        if [[ "${fail_runtime_readiness:-false}" == true && "$3" == test ]]; then return 1; fi
+    fi
+    real_sudo "$@"
+}
 
 mkdir -p "$APP_FOLDER/shared/storage/logs" "$APP_FOLDER/shared/database" "$TEST_DIR/site-two/storage"
 printf 'existing log contents\n' > "$APP_FOLDER/shared/storage/logs/laravel.log"
@@ -119,10 +125,7 @@ grep -q 'unchanged and ready' "$TEST_DIR/rerun.log"
 # Even a failed create/append probe only removes its own unique directory.
 mkdir "$APP_FOLDER/shared/storage/.metator-permissions.application"
 printf 'preserved\n' > "$APP_FOLDER/shared/storage/.metator-permissions.application/log"
-sudo() {
-    if [[ "$1" == -u && "$2" == www-data && "$3" == bash ]]; then return 1; fi
-    real_sudo "$@"
-}
+fail_runtime_probe=true
 if verify_shared_runtime_writes "$APP_FOLDER/shared/storage" > "$TEST_DIR/probe-failure.log" 2>&1; then
     printf 'FAIL write probe failure was reported as success\n' >&2
     exit 1
@@ -132,13 +135,11 @@ grep -q 'create/append verification failed' "$TEST_DIR/probe-failure.log"
 [[ "$(find "$APP_FOLDER/shared/storage" -maxdepth 1 -name '.metator-permissions.*' | wc -l)" == 1 ]]
 rm "$APP_FOLDER/shared/storage/.metator-permissions.application/log"
 rmdir "$APP_FOLDER/shared/storage/.metator-permissions.application"
+fail_runtime_probe=false
 before="$(snapshot "$APP_FOLDER/shared")"
 
 # Matching metadata cannot hide an identity/readiness failure.
-sudo() {
-    if [[ "$1" == -u && "$2" == www-data && "$3" == test ]]; then return 1; fi
-    real_sudo "$@"
-}
+fail_runtime_readiness=true
 if step_permissions > "$TEST_DIR/failure.log" 2>&1; then
     printf 'FAIL readiness failure was reported as success\n' >&2
     exit 1
