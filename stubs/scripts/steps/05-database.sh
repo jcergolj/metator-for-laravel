@@ -18,7 +18,13 @@ step_database() {
             die "PHP ${PHP_VERSION} SQLite support is not prepared; run prepare-server with PHP ${PHP_VERSION} and SQLite selected"
             return 1
         fi
-        sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER/shared/database"
+        if sudo test -L "$APP_FOLDER/shared/database" || sudo test -L "$APP_FOLDER/shared/database/database.sqlite"; then
+            die 'Shared SQLite paths must not be symlinks'
+            return 1
+        fi
+        if ! sudo test -d "$APP_FOLDER/shared/database"; then
+            sudo install -d -m 2770 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER/shared/database" || return 1
+        fi
         if ! sudo test -e "$APP_FOLDER/shared/database/database.sqlite"; then
             sudo install -m 664 -o "$DEPLOY_USER" -g www-data /dev/null \
                 "$APP_FOLDER/shared/database/database.sqlite"

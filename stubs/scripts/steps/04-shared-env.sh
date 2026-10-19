@@ -10,8 +10,13 @@ step_shared_env() {
     local env_file="$APP_FOLDER/shared/.env"
     ENV_FILE_CREATED=false
 
-    sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER"
-    sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER/shared"
+    if sudo test -L "$APP_FOLDER/shared" || sudo test -L "$env_file"; then
+        die 'Shared directory and .env must not be symlinks'
+        return 1
+    fi
+    if ! sudo test -d "$APP_FOLDER/shared"; then
+        sudo install -d -m 2770 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER/shared" || return 1
+    fi
     if ! sudo test -e "$env_file"; then
         warn "Creating shared environment file at $env_file"
         sudo install -m 640 -o "$DEPLOY_USER" -g www-data /dev/null "$env_file"

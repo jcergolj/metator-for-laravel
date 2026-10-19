@@ -19,6 +19,8 @@ set('keep_releases', 5);
 set('worker_type', $workerType);
 set('bin/php', $phpBinary);
 set('writable_dirs', ['shared/storage']);
+// Provisioning owns the durable runtime ACLs; do not replace them on deployment.
+set('writable_mode', 'skip');
 
 host('production')
     ->setHostname($site['ssh']['host'])

@@ -51,7 +51,7 @@ redirect_stderr=true
 stdout_logfile=${log_file}
 stopwaitsecs=60
 EOF
-    sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_FOLDER/shared/storage/logs"
+    # The required permissions step owns storage/logs, including default ACLs.
     if ! sudo cmp -s "$temporary" "$SUPERVISOR_FILE"; then
         changed=true
     fi

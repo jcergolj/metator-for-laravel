@@ -18,7 +18,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           tools: composer
-      - run: sudo apt-get update && sudo apt-get install --yes shellcheck
+      - run: sudo apt-get update && sudo apt-get install --yes shellcheck acl
       - run: composer validate --no-check-publish
       - run: composer install --no-interaction --prefer-dist
       - run: php tests/test-remote-staging.php

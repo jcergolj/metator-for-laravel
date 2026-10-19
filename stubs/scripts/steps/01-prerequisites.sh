@@ -12,7 +12,7 @@ step_prerequisites() {
         prepare_shared_baseline || return 1
     fi
 
-    for command in php composer git systemctl sudo sed grep cmp getent id; do
+    for command in php composer git systemctl sudo sed grep cmp getent id getfacl setfacl; do
         if ! command -v "$command" >/dev/null 2>&1; then
             die "$command is not installed"
             return 1
@@ -76,7 +76,7 @@ prepare_shared_baseline() {
     fi
 
     require_commands apt-get apt-cache dpkg-query || return 1
-    local shared_packages=(ca-certificates composer git curl jq unzip openssh-client software-properties-common caddy)
+    local shared_packages=(ca-certificates composer git curl jq unzip openssh-client software-properties-common caddy acl)
     [[ "$DATABASE_DRIVER" == sqlite ]] && shared_packages+=(sqlite3)
     if [[ "$DATABASE_DRIVER" == mysql ]]; then
         shared_packages+=(mariadb-server)
@@ -104,6 +104,13 @@ prepare_shared_baseline() {
             fi
         fi
     done
+    if ! command -v getfacl >/dev/null 2>&1 || ! command -v setfacl >/dev/null 2>&1; then
+        if dpkg-query -W -f='${Status}' acl 2>/dev/null | grep -qx 'install ok installed'; then
+            missing_command_packages+=(acl)
+        elif [[ " ${missing_packages[*]} " != *' acl '* ]]; then
+            missing_packages+=(acl)
+        fi
+    fi
     if [[ "${#missing_packages[@]}" -gt 0 || "${#missing_command_packages[@]}" -gt 0 ]]; then
         sudo apt-get update || return 1
     fi
