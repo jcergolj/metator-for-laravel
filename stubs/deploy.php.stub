@@ -22,6 +22,11 @@ set('writable_dirs', ['shared/storage']);
 // Provisioning owns the durable runtime ACLs; do not replace them on deployment.
 set('writable_mode', 'skip');
 
+if ($site['node'] ?? false) {
+    // All npm install/build commands inherit the provisioned site-scoped cache.
+    add('env', ['npm_config_cache' => $deployPath.'/shared/.npm']);
+}
+
 host('production')
     ->setHostname($site['ssh']['host'])
     ->setRemoteUser($site['deploy_user'] ?? 'deployer')

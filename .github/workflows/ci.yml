@@ -18,6 +18,9 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           tools: composer
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: sudo apt-get update && sudo apt-get install --yes shellcheck acl
       - run: composer validate --no-check-publish
       - run: composer install --no-interaction --prefer-dist

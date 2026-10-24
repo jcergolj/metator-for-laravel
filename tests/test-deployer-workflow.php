@@ -25,6 +25,7 @@ try {
                     'deploy_user' => 'deployer',
                     'repository' => 'example/application',
                     'database' => $database,
+                    'node' => $worker === 'queue',
                 ];
                 file_put_contents($directory.'/site.php', '<?php return '.var_export($site, true).';'.PHP_EOL);
 
@@ -40,13 +41,16 @@ task('acceptance:assert-site-settings', function (): void {
     $site = require __DIR__.'/site.php';
     $expectedRepository = 'git-'.$site['site_id'].':'.$site['repository'].'.git';
     $sqliteFileIsShared = in_array('database/database.sqlite', get('shared_files', []), true);
+    $npmCache = get('env', [])['npm_config_cache'] ?? null;
+    $expectedNpmCache = ($site['node'] ?? false) ? '/var/www/'.$site['site_id'].'/shared/.npm' : null;
 
     if (get('application') !== $site['site_id']
         || get('repository') !== $expectedRepository
         || get('deploy_path') !== '/var/www/'.$site['site_id']
         || get('bin/php') !== '/usr/bin/php'.$site['php_version']
         || get('worker_type') !== $site['worker']
-        || $sqliteFileIsShared !== ($site['database'] === 'sqlite')) {
+        || $sqliteFileIsShared !== ($site['database'] === 'sqlite')
+        || $npmCache !== $expectedNpmCache) {
         throw new RuntimeException('Generated Deployer configuration does not match the selected site settings.');
     }
 });

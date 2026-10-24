@@ -77,6 +77,30 @@ try {
     if ($files->get($project.'/deploy.php') !== $customRecipe) {
         throw new RuntimeException('Normal scaffolding installation replaced the operator-edited deploy.php.');
     }
+    $site = require $installation['site_configuration'];
+    if ($site['node'] !== false) {
+        throw new RuntimeException('Sites without the Node step must not enable an npm cache.');
+    }
+
+    $installation['selected_steps'] = array_values(array_filter(
+        $catalogue->available($packageSteps),
+        static function (array $step): bool {
+            return $step['id'] === 'node';
+        },
+    ));
+    (new GeneratedFileWriter($files))->write(
+        $installation,
+        $root.'/stubs',
+        $project,
+        $stepDirectory,
+        true,
+        static function (string $message): void {},
+        static function (string $message): void {},
+    );
+    $site = require $installation['site_configuration'];
+    if ($site['node'] !== true || ! $files->exists($project.'/scripts/steps/11-node.sh')) {
+        throw new RuntimeException('Selecting the Node step must enable the matching deployment cache setting.');
+    }
 } finally {
     $files->deleteDirectory($directory);
 }

@@ -187,6 +187,20 @@ task('deploy:build-assets', function (): void {
 after('deploy:vendors', 'deploy:build-assets');
 ```
 
+Select **Install Node.js and npm** during installation for server-side npm
+builds. This records `node => true` in the site configuration. Provisioning
+creates `/var/www/<site-id>/shared/.npm`, verifies access as the deployment user,
+and leaves existing cache contents intact on reruns. The generated recipe sets
+`npm_config_cache` for all Deployer commands, so both `npm ci` and `npm run build`
+use this cache without requiring a writable deployment home. Sites without the
+Node step do not get a cache or an npm requirement.
+
+For an existing installation, regenerate and merge the scaffolding as described
+above, then provision before deploying. When merging manually, update the generated
+`scripts/steps/11-node.sh`, add `'node' => true` to the site configuration, and copy
+the recipe's `npm_config_cache` environment setting. Keep application-specific build tasks in
+`deploy.php`; provisioning never installs application dependencies or builds assets.
+
 Use:
 
 - `{{release_path}}` for files in the new release

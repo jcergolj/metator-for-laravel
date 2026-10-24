@@ -31,6 +31,7 @@ final class GeneratedFileWriter
             'redis' => $placeholders['__REDIS_CAPABILITY__'],
             'worker' => $placeholders['__WORKER_TYPE__'],
             'scheduler' => $placeholders['__USE_SCHEDULER__'] === 'true',
+            'node' => in_array('node', $selectedStepIds, true),
         ], true).";\n");
 
         if ($installation['cloudflare_secrets'] !== null) {
