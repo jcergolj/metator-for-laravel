@@ -13,7 +13,7 @@ writer_text="$(<"$WRITER_FILE")"
 [[ "$command_text" == *"metator:install"* ]]
 [[ "$prompts_text" == *"Site ID"* ]]
 [[ "$prompts_text" == *"suggestedSiteId"* ]]
-[[ "$prompts_text" == *"default: \$suggestedSiteId"* ]]
+[[ "$prompts_text" == *"default: \$saved ?? \$suggestedSiteId"* ]]
 [[ "$prompts_text" == *"\$environment.'-'.\$name"* ]]
 [[ "$prompts_text" == *"strlen(\$value) <= 32"* ]]
 [[ "$prompts_text" == *"'__DEPLOY_PATH__' => '/var/www/'.\$siteId"* ]]

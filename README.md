@@ -86,6 +86,32 @@ Within `scripts/steps/`, forced regeneration replaces or removes only files
 tracked in `scripts/.metator-manifest.json`. Untracked custom step files are
 preserved.
 
+### Remembered answers and interrupted setup
+
+Choose the same configuration name to reuse its settings. For an existing
+installation, run `php artisan metator:install --force`: Metator displays a
+summary and asks **Reuse previous settings?** Choose **No** to select individual
+settings to change; all other answers are kept. Saved tokens are never displayed.
+This still regenerates scaffolding, so back up customized files first.
+
+Each validated answer is saved immediately. If setup is interrupted, rerun the
+installer and choose the same name to resume without retyping completed answers.
+Non-secret progress is stored in `.metator.<name>.answers.json`; pending edits
+take precedence over the completed configuration until installation succeeds.
+The draft is removed after a successful installation. To discard an unfinished
+draft, remove that one file; any saved Cloudflare credentials remain in the local
+companion file.
+
+Completed settings, including the deployment branch and selected step IDs, live
+in `metator.<name>.php`. Cloudflare credentials are saved separately in
+`metator.<name>.local.php`, with owner-only permissions. Metator adds both local
+companion and progress-file patterns to the application's `.gitignore`.
+Configuration names keep different sites' answers separate.
+
+Older configurations without a saved branch or step selection ask for those
+missing answers once. Check the branch against your customized `deploy.php`
+before regenerating it.
+
 ### Updating an existing installation
 
 `metator:install` exits with an error if the selected site configuration already

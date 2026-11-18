@@ -12,18 +12,28 @@ use function Laravel\Prompts\text;
 
 final class InstallationPrompts
 {
-    public function collect(string $basePath, string $stepCatalogue, StepCatalogue $catalogue, callable $error): ?array
+    public function __construct(private InstallationAnswers $answers)
+    {
+    }
+
+    public function collect(string $basePath, string $stepCatalogue, StepCatalogue $catalogue, callable $error, bool $force = false): ?array
     {
         $project = basename($basePath);
         $configName = text(label: __('Configuration name'), default: 'production', required: true, validate: fn (string $value): ?string => preg_match('/^[a-z][a-z0-9-]*$/', $value) === 1 ? null : __('Use lowercase letters, numbers, and hyphens, starting with a letter.'));
-        $repository = text(label: __('GitHub repository (owner/repository)'), default: 'jcergolj/'.$project, required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', $value) === 1 ? null : __('Repository must look like owner/repository.'));
+        if (is_file($basePath.'/metator.'.$configName.'.php') && ! $force) {
+            $error(__('Site configuration already exists: :path. Use --force to replace it.', ['path' => $basePath.'/metator.'.$configName.'.php']));
+
+            return null;
+        }
+        $this->answers->load($basePath, $configName);
+        $repository = $this->answers->ask('repository', fn (?string $saved): string => text(label: __('GitHub repository (owner/repository)'), default: $saved ?? 'jcergolj/'.$project, required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', $value) === 1 ? null : __('Repository must look like owner/repository.')));
         $suggestedSiteId = $this->suggestedSiteId($repository, $configName);
-        $siteId = text(label: __('Site ID'), default: $suggestedSiteId ?? '', required: true, validate: fn (string $value): ?string => $this->validSiteId($value) ? null : __('Use 1-24 lowercase letters or digits, with single hyphens between segments.'));
+        $siteId = $this->answers->ask('site_id', fn (?string $saved): string => text(label: __('Site ID'), default: $saved ?? $suggestedSiteId ?? '', required: true, validate: fn (string $value): ?string => $this->validSiteId($value) ? null : __('Use 1-32 lowercase letters or digits, with single hyphens between segments, starting with a letter.')));
         $availableSteps = $catalogue->available($stepCatalogue);
-        $selectedStepIds = multiselect(label: __('Deployment steps'), options: array_column($availableSteps, 'title', 'id'), default: array_column(array_filter($availableSteps, fn (array $step): bool => $step['default']), 'id'), required: true, hint: __('Select the steps that should be included in the generated server scripts.'));
-        $workerType = select(label: __('Worker mode'), options: ['none' => __('No workers'), 'queue' => __('Standard queue workers'), 'horizon' => __('Laravel Horizon')], default: 'none');
-        $redisCapability = select(label: __('Redis capability'), options: ['none' => __('Disabled'), 'cache' => __('Cache and sessions'), 'queue' => __('Queues, cache, and sessions')], default: 'none');
-        $schedulerEnabled = confirm(label: __('Enable the scheduler?'), default: true);
+        $selectedStepIds = $this->answers->ask('steps', fn (?array $saved): array => multiselect(label: __('Deployment steps'), options: array_column($availableSteps, 'title', 'id'), default: $saved ?? array_column(array_filter($availableSteps, fn (array $step): bool => $step['default']), 'id'), required: true, hint: __('Select the steps that should be included in the generated server scripts.')));
+        $workerType = $this->answers->ask('worker', fn (?string $saved): string => select(label: __('Worker mode'), options: ['none' => __('No workers'), 'queue' => __('Standard queue workers'), 'horizon' => __('Laravel Horizon')], default: $saved ?? 'none'));
+        $redisCapability = $this->answers->ask('redis', fn (?string $saved): string => select(label: __('Redis capability'), options: ['none' => __('Disabled'), 'cache' => __('Cache and sessions'), 'queue' => __('Queues, cache, and sessions')], default: $saved ?? 'none'));
+        $schedulerEnabled = $this->answers->ask('scheduler', fn (?bool $saved): bool => confirm(label: __('Enable the scheduler?'), default: $saved ?? true));
         if ($workerType === 'horizon' && $redisCapability !== 'queue') {
             $error('Laravel Horizon requires the Redis queues capability.');
 
@@ -41,16 +51,16 @@ final class InstallationPrompts
         $catalogue->validateSelection($availableSteps, $selectedSteps);
 
         $cloudflareSecrets = in_array('cloudflare', $selectedStepIds, true) ? [
-            'token' => password(label: __('Cloudflare API token'), required: true),
-            'zone_id' => text(label: __('Cloudflare zone ID'), required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z0-9]+$/', $value) === 1 ? null : __('Enter a valid Cloudflare zone ID.')),
+            'token' => $this->answers->ask('cloudflare_token', fn (): string => password(label: __('Cloudflare API token'), required: true)),
+            'zone_id' => $this->answers->ask('cloudflare_zone', fn (?string $saved): string => text(label: __('Cloudflare zone ID'), default: $saved ?? '', required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z0-9]+$/', $value) === 1 ? null : __('Enter a valid Cloudflare zone ID.'))),
         ] : null;
 
-        $branch = text(label: __('Deployment branch'), default: 'master', required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $value) === 1 ? null : __('Enter a valid Git branch name.'));
-        $serverIp = text(label: __('Server IP address'), required: true, validate: fn (string $value): ?string => filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false ? __('Enter a valid IPv4 address.') : null);
-        $sshUser = text(label: __('Operator SSH user'), default: 'jcergolj', required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z_][A-Za-z0-9_-]*$/', $value) === 1 ? null : __('Enter a valid SSH username.'));
-        $domain = text(label: __('Production domain'), required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/', $value) === 1 ? null : __('Enter a valid domain.'));
-        $databaseDriver = select(label: __('Database driver'), options: ['sqlite' => __('SQLite'), 'mysql' => __('MySQL')], default: 'sqlite');
-        $phpVersion = select(label: __('PHP version'), options: ['8.4' => __('PHP 8.4'), '8.5' => __('PHP 8.5')], default: '8.5');
+        $branch = $this->answers->ask('branch', fn (?string $saved): string => text(label: __('Deployment branch'), default: $saved ?? 'master', required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $value) === 1 ? null : __('Enter a valid Git branch name.')));
+        $serverIp = $this->answers->ask('host', fn (?string $saved): string => text(label: __('Server IP address'), default: $saved ?? '', required: true, validate: fn (string $value): ?string => filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false ? __('Enter a valid IPv4 address.') : null));
+        $sshUser = $this->answers->ask('ssh_user', fn (?string $saved): string => text(label: __('Operator SSH user'), default: $saved ?? 'jcergolj', required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z_][A-Za-z0-9_-]*$/', $value) === 1 ? null : __('Enter a valid SSH username.')));
+        $domain = $this->answers->ask('domain', fn (?string $saved): string => text(label: __('Production domain'), default: $saved ?? '', required: true, validate: fn (string $value): ?string => preg_match('/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/', $value) === 1 ? null : __('Enter a valid domain.')));
+        $databaseDriver = $this->answers->ask('database', fn (?string $saved): string => select(label: __('Database driver'), options: ['sqlite' => __('SQLite'), 'mysql' => __('MySQL')], default: $saved ?? 'sqlite'));
+        $phpVersion = $this->answers->ask('php_version', fn (?string $saved): string => select(label: __('PHP version'), options: ['8.4' => __('PHP 8.4'), '8.5' => __('PHP 8.5')], default: $saved ?? '8.5'));
 
         return [
             'config_name' => $configName,

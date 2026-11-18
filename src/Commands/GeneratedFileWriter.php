@@ -25,6 +25,8 @@ final class GeneratedFileWriter
             'deploy_user' => 'deployer',
             'domain' => $placeholders['__DOMAIN__'],
             'repository' => $placeholders['__GITHUB_REPOSITORY__'],
+            'branch' => $placeholders['__BRANCH__'],
+            'steps' => $selectedStepIds,
             'php_version' => $placeholders['__PHP_VERSION__'],
             'database' => $placeholders['__DATABASE_DRIVER__'] === 'mysql' ? 'mariadb' : 'sqlite',
             'cloudflare' => in_array('cloudflare', $selectedStepIds, true),

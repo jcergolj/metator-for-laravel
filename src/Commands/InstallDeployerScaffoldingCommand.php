@@ -19,6 +19,7 @@ final class InstallDeployerScaffoldingCommand extends Command
         private StepCatalogue $stepCatalogue,
         private InstallationPrompts $prompts,
         private GeneratedFileWriter $writer,
+        private InstallationAnswers $answers,
     ) {
         parent::__construct();
     }
@@ -35,9 +36,12 @@ final class InstallDeployerScaffoldingCommand extends Command
             $stepCataloguePath.'/.metator-package-manifest.json',
             (bool) $this->option('force'),
         );
-        $installation = $this->prompts->collect($basePath, $stepCataloguePath, $this->stepCatalogue, fn (string $message): mixed => $this->error($message));
-        if ($installation === null || ! $this->assertInstallable($installation['site_configuration'], $installation['env_example'])) {
+        $installation = $this->prompts->collect($basePath, $stepCataloguePath, $this->stepCatalogue, fn (string $message): mixed => $this->error($message), (bool) $this->option('force'));
+        if ($installation === null) {
             return self::FAILURE;
+        }
+        if (! $this->files->exists($installation['env_example'])) {
+            throw new RuntimeException("Missing application .env.example: {$installation['env_example']}");
         }
 
         $this->writer->write(
@@ -49,6 +53,7 @@ final class InstallDeployerScaffoldingCommand extends Command
             fn (string $message): mixed => $this->info($message),
             fn (string $message): mixed => $this->warn($message),
         );
+        $this->answers->finish($basePath, $installation['config_name']);
 
         $this->info('Metator scaffolding installed.');
         $this->line('Next steps:');
@@ -58,19 +63,5 @@ final class InstallDeployerScaffoldingCommand extends Command
         $this->line('  4. Deploy separately after infrastructure readiness: vendor/bin/dep deploy production');
 
         return self::SUCCESS;
-    }
-
-    private function assertInstallable(string $siteConfiguration, string $envExample): bool
-    {
-        if ($this->files->exists($siteConfiguration) && ! $this->option('force')) {
-            $this->error("Site configuration already exists: {$siteConfiguration}. Use --force to replace it.");
-
-            return false;
-        }
-        if (! $this->files->exists($envExample)) {
-            throw new RuntimeException("Missing application .env.example: {$envExample}");
-        }
-
-        return true;
     }
 }
